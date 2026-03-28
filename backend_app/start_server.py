@@ -35,7 +35,7 @@ def main():
     try:
         # Start the server
         subprocess.run([
-            sys.executable, "main_simple.py"
+            "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"
         ], check=True)
     except KeyboardInterrupt:
         print("\n🛑 Server stopped by user")

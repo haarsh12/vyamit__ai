@@ -1,20 +1,44 @@
 @echo off
-echo 🚀 Starting Vyamit AI Backend Server...
-echo ==========================================
+echo 🚀 Starting Backend Server...
+echo ========================================
 
+REM Change to script directory
 cd /d "%~dp0"
+
+REM Check if virtual environment exists
+if not exist "venv\Scripts\activate.bat" (
+    echo ❌ Virtual environment not found at venv\Scripts\activate.bat
+    echo    Please create virtual environment first:
+    echo    python -m venv venv
+    pause
+    exit /b 1
+)
+
+REM Activate virtual environment
+echo 🔧 Activating virtual environment...
 call venv\Scripts\activate.bat
 
+if errorlevel 1 (
+    echo ❌ Failed to activate virtual environment
+    pause
+    exit /b 1
+)
+
 echo ✅ Virtual environment activated
-echo 📁 Current directory: %CD%
-echo 🌐 Server will be available at: http://127.0.0.1:8000
-echo 📚 API Documentation: http://127.0.0.1:8000/docs
+echo 📁 Working from: %CD%
+
+REM Change to app directory
+cd app
+echo 📂 Changed to app directory: %CD%
+
 echo.
-echo 🔄 Starting server with database connection...
-echo ⚠️  Keep this window open while testing!
+echo 🌐 Server will be available at: http://localhost:8000
+echo 📚 API Documentation: http://localhost:8000/docs
+echo 🔄 Starting uvicorn server...
+echo ⚠️  Keep this window open while server is running!
 echo.
 
-cd app
-python main_with_db.py
+REM Start the server
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 pause
