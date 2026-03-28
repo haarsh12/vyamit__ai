@@ -1,52 +1,38 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from core.config import settings
-import logging
+from sqlmodel import SQLModel, create_engine, Session
+from app.db.models import User, OTP, Item
+from dotenv import load_dotenv
+import os
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+load_dotenv()
 
-# Create database engine
+# Get DATABASE_URL from environment (Render sets this)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Fix for Render/Supabase - use postgresql:// instead of postgres://
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# Create engine - fail with helpful message if DATABASE_URL not set
+if DATABASE_URL is None or DATABASE_URL.strip() == "":
+    raise ValueError(
+        "DATABASE_URL is not set. "
+        "For Render: add DATABASE_URL in Dashboard > Environment. "
+        "Create a PostgreSQL database first, then use its Internal Database URL."
+    )
+
+# Production: echo=False to reduce log noise. Set DB_ECHO=1 for debugging.
 engine = create_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=300,
-    echo=True if settings.ENVIRONMENT == "development" else False
+    DATABASE_URL,
+    echo=os.getenv("DB_ECHO", "0").lower() in ("1", "true", "yes"),
+    pool_pre_ping=True,  # Verify connections before use (handles Render DB timeouts)
+    pool_recycle=300,    # Recycle connections every 5 min (Render free tier)
 )
 
-# Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# 4. Function to create tables (Run this when app starts)
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
 
-# Create base class for models
-Base = declarative_base()
-
-def get_db():
-    """Dependency to get database session"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def test_database_connection():
-    """Test database connection"""
-    try:
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
-            logger.info("✅ Database connection successful!")
-            return True
-    except Exception as e:
-        logger.error(f"❌ Database connection failed: {e}")
-        return False
-
-def create_tables():
-    """Create all tables"""
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("✅ Tables created successfully!")
-        return True
-    except Exception as e:
-        logger.error(f"❌ Failed to create tables: {e}")
-        return False
+# 5. Dependency (We use this in every API endpoint to get a DB session)
+def get_session():
+    with Session(engine) as session:
+        yield session

@@ -1,86 +1,84 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from db.database import Base
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from datetime import datetime
 
-class User(Base):
-    __tablename__ = "users"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String(15), unique=True, index=True, nullable=False)
-    name = Column(String(100), nullable=True)
-    email = Column(String(100), nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
-    # Relationships
-    shop_details = relationship("ShopDetails", back_populates="owner", uselist=False)
-    bills = relationship("Bill", back_populates="user")
+# 1. Base Model (Fields every table should have)
+class TimestampModel(SQLModel):
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class ShopDetails(Base):
-    __tablename__ = "shop_details"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
-    shop_name = Column(String(200), nullable=False)
-    address = Column(Text, nullable=True)
-    phone1 = Column(String(15), nullable=True)
-    phone2 = Column(String(15), nullable=True)
-    gst_number = Column(String(50), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
-    # Relationships
-    owner = relationship("User", back_populates="shop_details")
+# 2. User Model (The Shop Owner)
+class User(TimestampModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    phone_number: str = Field(index=True, unique=True)  # This is phone1 - READ ONLY
+    shop_name: Optional[str] = None
+    owner_name: Optional[str] = None
+    address: Optional[str] = None
+    phone2: Optional[str] = None  # Secondary phone number (EDITABLE)
+    is_active: bool = Field(default=True)
+    role: str = Field(default="owner")
 
-class Item(Base):
-    __tablename__ = "items"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    name = Column(String(200), nullable=False)
-    alternative_names = Column(Text, nullable=True)  # JSON string of alternative names
-    price = Column(Float, default=0.0)
-    unit = Column(String(50), default="kg")
-    category = Column(String(100), nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
-    # Relationships
-    bill_items = relationship("BillItem", back_populates="item")
+# 3. OTP Model (Temporary codes for login)
+class OTP(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    phone_number: str = Field(index=True)
+    otp_code: str
+    expires_at: datetime
+    is_used: bool = Field(default=False)
 
-class Bill(Base):
-    __tablename__ = "bills"
+# 4. Item Model (Your Inventory) - MODIFIED FOR MULTI-LANGUAGE SUPPORT
+class Item(TimestampModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
     
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    bill_number = Column(String(50), unique=True, nullable=False)
-    customer_name = Column(String(200), nullable=True)
-    customer_phone = Column(String(15), nullable=True)
-    total_amount = Column(Float, default=0.0)
-    discount = Column(Float, default=0.0)
-    final_amount = Column(Float, default=0.0)
-    payment_method = Column(String(50), default="cash")
-    notes = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # NEW: Store the master list ID from frontend (e.g., "101", "202", "FB1")
+    # This allows us to match items between frontend and backend uniquely
+    master_id: str = Field(index=True)
     
-    # Relationships
-    user = relationship("User", back_populates="bills")
-    bill_items = relationship("BillItem", back_populates="bill", cascade="all, delete-orphan")
+    # NEW: Store all names as a JSON string array
+    # Example: '["Chawal", "Rice", "चावल", "तांदूळ"]'
+    # This replaces the old 'name' and 'hindi_name' fields
+    names: str  # JSON string containing array of names
+    
+    category: str = Field(index=True)     # e.g., "Anaaj", "Dal", "Masale"
+    price: float                          # e.g., 0.0 (unset) or 45.0 (set by user)
+    unit: str                             # e.g., "kg", "litre", "plate"
+    owner_id: Optional[int] = Field(default=None, foreign_key="user.id")
 
-class BillItem(Base):
-    __tablename__ = "bill_items"
+# 5. Bill Model (Saved Bills)
+class Bill(TimestampModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    owner_id: int = Field(foreign_key="user.id", index=True)
     
-    id = Column(Integer, primary_key=True, index=True)
-    bill_id = Column(Integer, ForeignKey("bills.id"))
-    item_id = Column(Integer, ForeignKey("items.id"))
-    item_name = Column(String(200), nullable=False)  # Store name at time of billing
-    quantity = Column(Float, nullable=False)
-    unit_price = Column(Float, nullable=False)
-    total_price = Column(Float, nullable=False)
+    # Bill details
+    total_amount: float
+    total_items: int
     
-    # Relationships
-    bill = relationship("Bill", back_populates="bill_items")
-    item = relationship("Item", back_populates="bill_items")
+    # Bill items stored as JSON string
+    # Example: '[{"name":"Chawal","quantity":2,"unit":"kg","price":50,"total":100}]'
+    items_json: str
+    
+    # Optional customer info
+    customer_phone: Optional[str] = None
+    customer_name: Optional[str] = None
+    
+    # Metadata
+    bill_date: datetime = Field(default_factory=datetime.utcnow, index=True)
+    payment_method: Optional[str] = "cash"  # cash, upi, card
+
+# 6. Sale Item Model (Individual items sold - for analytics)
+class SaleItem(TimestampModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    owner_id: int = Field(foreign_key="user.id", index=True)
+    bill_id: int = Field(foreign_key="bill.id", index=True)
+    
+    # Item details
+    item_name: str
+    item_category: str = Field(index=True)
+    quantity: float
+    unit: str
+    price_per_unit: float
+    total_price: float
+    
+    # Sale metadata
+    sale_date: datetime = Field(default_factory=datetime.utcnow, index=True)
+    hour_of_day: int = Field(index=True)  # 0-23 for peak hour analysis

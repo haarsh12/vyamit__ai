@@ -1,1 +1,1 @@
-# Main App Package
+# Main app package
