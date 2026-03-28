@@ -5,6 +5,10 @@ Handles AI-powered voice-to-inventory parsing
 import google.generativeai as genai
 import os
 import json
+import numpy as np
+import librosa
+import soundfile as sf
+import noisereduce as nr
 from typing import List, Dict, Any
 
 # Configure Gemini
@@ -226,3 +230,40 @@ def _build_inventory_context(items: List[Dict[str, Any]], categories: List[str])
         context_parts.append(f"Sample Existing Items:\n" + "\n".join(items_str))
     
     return "\n\n".join(context_parts) if context_parts else "No existing inventory"
+
+
+def preprocess_audio(input_path: str, output_path: str) -> None:
+    """
+    Preprocess audio for speech recognition by reducing noise and standardizing format.
+    Suitable for noisy environments like a kirana shop.
+    
+    Args:
+        input_path: Path to the input audio file
+        output_path: Path to save the processed audio file
+    """
+    try:
+        print(f"🎙️ Preprocessing audio: {input_path}")
+        
+        # 1. Load audio, convert to mono, and resample to 16000 Hz
+        # librosa.load automatically converts to mono (mono=True by default) and resamples if sr is provided
+        audio_data, sample_rate = librosa.load(input_path, sr=16000, mono=True)
+        
+        # 2. Normalize audio volume
+        # We normalize the audio to span the range [-1.0, 1.0] to ensure consistent volume
+        max_val = np.max(np.abs(audio_data))
+        if max_val > 0:
+            audio_data = audio_data / max_val
+            
+        # 3. Apply noise reduction
+        # Using noisereduce to perform spectral noise gating
+        reduced_noise_audio = nr.reduce_noise(y=audio_data, sr=sample_rate)
+        
+        # 4. Save the processed audio
+        # Using soundfile to write the processed array back to an audio file
+        sf.write(output_path, reduced_noise_audio, sample_rate)
+        
+        print(f"✅ Audio preprocessed successfully. Saved to: {output_path}")
+        
+    except Exception as e:
+        print(f"❌ Error during audio preprocessing: {e}")
+        raise e
