@@ -1,0 +1,39 @@
+# Render Optimized Requirements - Ultra Lightweight
+# Core FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database (Essential)
+sqlmodel==0.0.14
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Environment & Config
+python-dotenv==1.0.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# HTTP & JSON
+httpx==0.25.2
+requests==2.31.0
+orjson==3.9.10
+
+# Date handling
+python-dateutil==2.8.2
+
+# AI (Minimal - only Gemini)
+google-generativeai==0.8.6
+protobuf>=4.25,<6
+
+# Basic numpy for data handling
+numpy==1.24.3
+
+# Skip heavy ML dependencies on Render:
+# - sentence-transformers (causes OOM)
+# - torch/transformers (too heavy)
+# - langchain (not essential for basic functionality)

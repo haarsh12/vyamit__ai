@@ -45,18 +45,15 @@ google-generativeai==0.8.6
 protobuf>=4.25,<6
 
 # =========================
-# LANGCHAIN (PINNED STABLE)
+# LANGCHAIN (LIGHTWEIGHT)
 # =========================
 langchain==0.1.20
 langchain-core==0.1.52
 langchain-community==0.0.38
-langchain-huggingface==0.0.3
-huggingface_hub==0.23.0
 
 # =========================
-# EMBEDDINGS / VECTOR
+# VECTOR / NUMERIC
 # =========================
-sentence-transformers==2.6.1
 numpy==1.24.3
 
 # =========================
