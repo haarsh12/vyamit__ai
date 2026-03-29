@@ -98,12 +98,12 @@ Return ONLY valid JSON. No explanation."""
     last_error = ""
     for model_name in candidate_models:
         try:
-            print(f"🔄 Trying model: {model_name}...")
+            print(f"[INFO] Trying model: {model_name}...")
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
             
             result_text = response.text.strip()
-            print(f"📝 Raw AI response: {result_text[:200]}...")  # Debug: show first 200 chars
+            print(f"[DEBUG] Raw AI response: {result_text[:200]}...")
             
             # Extract JSON from response
             if "```json" in result_text:
@@ -115,7 +115,7 @@ Return ONLY valid JSON. No explanation."""
             try:
                 parsed_data = json.loads(result_text)
             except json.JSONDecodeError as je:
-                print(f"❌ JSON parse error: {je}")
+                print(f"[ERROR] JSON parse error: {je}")
                 print(f"   Attempted to parse: {result_text[:500]}")
                 raise
             
@@ -133,7 +133,7 @@ Return ONLY valid JSON. No explanation."""
                         for item in category['items']:
                             _mark_existing_item(item, existing_items)
             
-            print(f"✅ Parsed voice inventory: {len(parsed_data.get('categories', []))} categories")
+            print(f"[OK] Parsed voice inventory: {len(parsed_data.get('categories', []))} categories")
             
             # Debug: Print parsed items
             for cat in parsed_data.get('categories', []):
@@ -145,14 +145,14 @@ Return ONLY valid JSON. No explanation."""
             return parsed_data
             
         except Exception as e:
-            print(f"⚠️ {model_name} Failed: {e}")
+            print(f"[WARN] {model_name} failed: {e}")
             import traceback
             traceback.print_exc()
             last_error = str(e)
             continue
     
     # All models failed - return fallback
-    print(f"❌ All models failed. Last error: {last_error}")
+    print(f"[ERROR] All models failed. Last error: {last_error}")
     print(f"   Raw text was: {raw_text}")
     return {
         "categories": [{
@@ -194,7 +194,10 @@ def _mark_existing_item(item: Dict[str, Any], existing_items: List[Dict[str, Any
                 item['old_unit'] = existing.get('unit', 'kg')
                 item['existing_id'] = existing.get('id', '')
                 
-                print(f"   🔍 Found existing item: {item_name} (₹{item['old_price']}/{item['old_unit']} → ₹{item.get('price')}/{item.get('unit')})")
+                print(
+                    f"   [INFO] Found existing item: {item_name} "
+                    f"(Rs.{item['old_price']}/{item['old_unit']} -> Rs.{item.get('price')}/{item.get('unit')})"
+                )
                 return
     
     # Not found - mark as new

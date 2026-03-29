@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from app.db.database import get_session
@@ -10,6 +12,8 @@ from app.core.shop_categories import (
 from app.services.otp_service import OTPService
 from app.services.sms_service import SMSService
 from app.core.security import create_access_token, get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 otp_service = OTPService()
@@ -31,7 +35,11 @@ def send_otp(request: OTPRequest, session: Session = Depends(get_session)):
     statement = select(User).where(User.phone_number == clean_phone)
     existing_user = session.exec(statement).first()
 
-    print(f"DEBUG: Send OTP -> Phone: {clean_phone} | User Found: {existing_user.id if existing_user else 'No'}")
+    logger.debug(
+        "send_otp is_login=%s user_exists=%s",
+        request.is_login,
+        existing_user is not None,
+    )
 
     # 2. Logic for REGISTRATION (User wants to sign up)
     if not request.is_login:
@@ -96,7 +104,7 @@ def verify_otp(request: VerifyOTPRequest, session: Session = Depends(get_session
             )
             
         is_new_user = True
-        print(f"DEBUG: Creating NEW user for {clean_phone} category={category}")
+        logger.debug("register: new user category=%s", category)
         
         user = User(
             phone_number=clean_phone,
@@ -110,7 +118,7 @@ def verify_otp(request: VerifyOTPRequest, session: Session = Depends(get_session
         session.commit()
         session.refresh(user)
     else:
-        print(f"DEBUG: Logging in EXISTING user ID: {user.id} Name: {user.shop_name}")
+        logger.debug("login: existing user_id=%s", user.id)
     
     # 4. Generate Token
     access_token = create_access_token(data={"sub": str(user.id)})
@@ -149,24 +157,18 @@ def update_profile(
             detail="User not found"
         )
     
-    print(f"DEBUG: Update Profile Request for User ID: {current_user.id}")
-    
     # Update allowed fields
     if request.shop_name is not None:
         current_user.shop_name = request.shop_name.strip()
-        print(f"DEBUG: Updated shop_name to: {current_user.shop_name}")
-    
+
     if request.owner_name is not None:
         current_user.owner_name = request.owner_name.strip()
-        print(f"DEBUG: Updated owner_name to: {current_user.owner_name}")
-    
+
     if request.address is not None:
         current_user.address = request.address.strip()
-        print(f"DEBUG: Updated address to: {current_user.address}")
-    
+
     if request.phone2 is not None:
         current_user.phone2 = request.phone2.strip()
-        print(f"DEBUG: Updated phone2 to: {current_user.phone2}")
 
     if request.shop_category is not None:
         normalized = normalize_shop_category(request.shop_category)
@@ -176,14 +178,13 @@ def update_profile(
                 detail="Invalid shop_category",
             )
         current_user.shop_category = normalized
-        print(f"DEBUG: Updated shop_category to: {current_user.shop_category}")
-    
+
     # Save changes to database
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
-    
-    print(f"DEBUG: Profile updated successfully for User ID: {current_user.id}")
+
+    logger.info("profile updated user_id=%s", current_user.id)
     
     # Generate new token (optional, but ensures fresh data)
     access_token = create_access_token(data={"sub": str(current_user.id)})

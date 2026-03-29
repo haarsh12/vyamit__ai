@@ -44,10 +44,11 @@ flake8==6.1.0
 google-generativeai==0.8.6
 # google-generativeai pins protobuf <6; protobuf 6+ breaks older clients (MessageToJson kwarg)
 protobuf>=4.25,<6
-# Hybrid pipeline: LangChain + Hugging Face Inference for Qwen / Gemma
-langchain>=0.3,<0.4
-langchain-core>=0.3,<0.4
-langchain-huggingface>=0.3,<0.4
+# Hybrid pipeline: LangChain + Hugging Face (updated for production compatibility)
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+langchain-huggingface>=0.0.1
 huggingface_hub>=0.23.0
 
 # Vector Embeddings & RAG

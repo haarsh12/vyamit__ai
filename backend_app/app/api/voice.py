@@ -50,10 +50,10 @@ def process_voice(
     )
     if request.shop_category and request.shop_category.strip() != shop_category:
         print(
-            f"⚠️ shop_category hint from client ({request.shop_category!r}) "
-            f"≠ DB ({shop_category!r}) — using DB for AI"
+            f"[WARN] shop_category hint from client ({request.shop_category!r}) "
+            f"!= DB ({shop_category!r}); using DB value for AI."
         )
-    print(f"🏷️ /voice/process user_id={user_id} shop_category={shop_category} (DB)")
+    print(f"[INFO] /voice/process user_id={user_id} shop_category={shop_category} (from DB)")
     
     # 2. Call hybrid (Qwen→Gemini→Gemma + memory) or legacy Gemini-only
     if hybrid_voice is not None:

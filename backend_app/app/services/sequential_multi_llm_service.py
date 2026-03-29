@@ -82,12 +82,12 @@ class SequentialMultiLLMService:
             "avg_response_time": 0.0
         }
         
-        print("\n🚀 Sequential Multi-LLM Orchestration System Initialized")
+        print("\n[INFO] Sequential Multi-LLM Orchestration System initialized")
         print("=" * 60)
-        print("📋 SYSTEM NAME: Sequential Multi-LLM Orchestration System with Memory & Logging")
-        print("🔄 EXECUTION ORDER: Qwen → Gemini → Gemma")
-        print("🧠 MEMORY: Conversation Buffer Enabled")
-        print("📊 LOGGING: Structured Terminal Output Enabled")
+        print("SYSTEM: Sequential Multi-LLM Orchestration with memory and logging")
+        print("EXECUTION ORDER: Qwen -> Gemini -> Gemma")
+        print("MEMORY: Conversation buffer enabled")
+        print("LOGGING: Structured terminal output enabled")
         print("=" * 60)
     
     def setup_logging(self):
@@ -100,7 +100,7 @@ class SequentialMultiLLMService:
     
     def initialize_models(self):
         """Initialize all three models with proper configuration"""
-        print("\n🔧 INITIALIZING MODELS...")
+        print("\n[INFO] Initializing models...")
         
         # Get API keys
         hf_token = os.getenv("HUGGINGFACE_API_TOKEN")
@@ -113,7 +113,7 @@ class SequentialMultiLLMService:
         
         try:
             # 1. Qwen (Primary - Fast)
-            print("   🔹 Initializing Qwen/Qwen2.5-7B-Instruct...")
+            print("   [..] Initializing Qwen/Qwen2.5-7B-Instruct...")
             self.qwen = HuggingFaceEndpoint(
                 repo_id="Qwen/Qwen2.5-7B-Instruct",
                 max_new_tokens=512,
@@ -125,20 +125,20 @@ class SequentialMultiLLMService:
                     "max_length": 2048
                 }
             )
-            print("   ✅ Qwen initialized successfully")
+            print("   [OK] Qwen initialized successfully")
             
             # 2. Gemini (Smart Fallback)
-            print("   🔹 Initializing Gemini-2.5-Flash...")
+            print("   [..] Initializing Gemini-2.5-Flash...")
             self.gemini = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash",
                 temperature=0.3,
                 google_api_key=gemini_key,
                 max_output_tokens=512
             )
-            print("   ✅ Gemini initialized successfully")
+            print("   [OK] Gemini initialized successfully")
             
             # 3. Gemma (Final Fallback)
-            print("   🔹 Initializing Google/Gemma-2B...")
+            print("   [..] Initializing Google/Gemma-2B...")
             self.gemma = HuggingFaceEndpoint(
                 repo_id="google/gemma-2b",
                 max_new_tokens=512,
@@ -149,7 +149,7 @@ class SequentialMultiLLMService:
                     "max_length": 1024
                 }
             )
-            print("   ✅ Gemma initialized successfully")
+            print("   [OK] Gemma initialized successfully")
             
             # Model execution order
             self.models = [
@@ -158,22 +158,22 @@ class SequentialMultiLLMService:
                 ("GEMMA", self.gemma)
             ]
             
-            print("   🎯 All models ready for sequential execution")
+            print("   [OK] All models ready for sequential execution")
             
         except Exception as e:
-            print(f"   ❌ Model initialization failed: {str(e)}")
+            print(f"   [ERROR] Model initialization failed: {str(e)}")
             raise
     
     def initialize_memory(self):
         """Initialize conversation memory system"""
-        print("\n🧠 INITIALIZING MEMORY SYSTEM...")
+        print("\n[INFO] Initializing memory system...")
         self.memory = ConversationBufferMemory(
             return_messages=True,
             memory_key="chat_history",
             input_key="input",
             output_key="output"
         )
-        print("   ✅ Conversation Buffer Memory initialized")
+        print("   [OK] Conversation buffer memory initialized")
     
     def get_master_prompt(self, user_input: str, include_history: bool = True) -> str:
         """
@@ -249,7 +249,7 @@ RESPONSE:"""
         processed = user_input.strip()
         
         # Log preprocessing
-        print(f"\n📝 PREPROCESSING:")
+        print(f"\n[INFO] PREPROCESSING:")
         print(f"   Raw Input: '{user_input}'")
         print(f"   Processed: '{processed}'")
         
@@ -294,12 +294,12 @@ RESPONSE:"""
         Execute models in sequential order: Qwen → Gemini → Gemma
         Return first successful response
         """
-        print(f"\n🔄 SEQUENTIAL MODEL EXECUTION STARTED")
+        print(f"\n[INFO] Sequential model execution started")
         print("=" * 50)
         
         for model_name, model in self.models:
             print(f"\n[TRYING MODEL]: {model_name}")
-            print(f"⏱️  Execution started at: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
+            print(f"[TIME] Execution started at: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
             
             start_time = time.time()
             
@@ -315,18 +315,18 @@ RESPONSE:"""
                 
                 execution_time = time.time() - start_time
                 
-                print(f"⏱️  Execution completed in: {execution_time:.3f}s")
-                print(f"📤 Raw Response Length: {len(str(response_text))} characters")
-                print(f"📤 Response Preview: {str(response_text)[:100]}...")
+                print(f"[TIME] Execution completed in: {execution_time:.3f}s")
+                print(f"[INFO] Raw response length: {len(str(response_text))} characters")
+                print(f"[INFO] Response preview: {str(response_text)[:100]}...")
                 
                 # Validate response
                 is_valid, confidence = self.validate_response(str(response_text), prompt)
                 
-                print(f"✅ Validation: {'PASSED' if is_valid else 'FAILED'}")
-                print(f"🎯 Confidence Score: {confidence:.2f}")
+                print(f"[OK] Validation: {'PASSED' if is_valid else 'FAILED'}")
+                print(f"[INFO] Confidence score: {confidence:.2f}")
                 
                 if is_valid:
-                    print(f"🎉 SUCCESS with {model_name}!")
+                    print(f"[OK] Success with {model_name}")
                     return ModelResponse(
                         model_name=model_name,
                         response=str(response_text),
@@ -335,19 +335,19 @@ RESPONSE:"""
                         confidence_score=confidence
                     )
                 else:
-                    print(f"⚠️  Response quality insufficient, trying next model...")
+                    print(f"[WARN] Response quality insufficient, trying next model...")
                     
             except Exception as e:
                 execution_time = time.time() - start_time
                 error_msg = str(e)
-                print(f"❌ ERROR in {model_name}: {error_msg}")
-                print(f"⏱️  Failed after: {execution_time:.3f}s")
+                print(f"[ERROR] In {model_name}: {error_msg}")
+                print(f"[TIME] Failed after: {execution_time:.3f}s")
                 
                 # Continue to next model
                 continue
         
         # All models failed
-        print(f"\n💥 ALL MODELS FAILED - No valid response generated")
+        print(f"\n[ERROR] All models failed — no valid response generated")
         return ModelResponse(
             model_name="NONE",
             response="I apologize, but I'm unable to process your request at the moment. Please try again.",
@@ -362,7 +362,7 @@ RESPONSE:"""
             {"input": user_input},
             {"output": response}
         )
-        print(f"\n🧠 MEMORY UPDATED:")
+        print(f"\n[INFO] Memory updated:")
         print(f"   Total conversations: {len(self.memory.chat_memory.messages) // 2}")
     
     def create_structured_log(self, user_input: str, preprocessed_input: str, 
@@ -397,39 +397,39 @@ RESPONSE:"""
         """Print comprehensive debug information to terminal"""
         
         print("\n" + "=" * 80)
-        print("🔍 DETAILED PROCESSING LOG")
+        print("DETAILED PROCESSING LOG")
         print("=" * 80)
         
         # Basic Information
-        print(f"⏰ TIMESTAMP: {log_entry.timestamp}")
-        print(f"👤 USER INPUT: '{log_entry.user_input}'")
-        print(f"🔧 PREPROCESSED: '{log_entry.preprocessed_input}'")
-        print(f"⏱️  TOTAL EXECUTION TIME: {log_entry.execution_time:.3f}s")
+        print(f"TIMESTAMP: {log_entry.timestamp}")
+        print(f"USER INPUT: '{log_entry.user_input}'")
+        print(f"PREPROCESSED: '{log_entry.preprocessed_input}'")
+        print(f"TOTAL EXECUTION TIME: {log_entry.execution_time:.3f}s")
         
         # Model Execution Details
-        print(f"\n🤖 MODEL EXECUTION:")
-        print(f"   📋 Models Available: {', '.join(log_entry.models_tried)}")
-        print(f"   🎯 Successful Model: {log_entry.successful_model}")
-        print(f"   ✅ Validation Status: {'PASSED' if log_entry.validation_passed else 'FAILED'}")
+        print(f"\nMODEL EXECUTION:")
+        print(f"   Models available: {', '.join(log_entry.models_tried)}")
+        print(f"   Successful model: {log_entry.successful_model}")
+        print(f"   Validation status: {'PASSED' if log_entry.validation_passed else 'FAILED'}")
         
         # Response Details
-        print(f"\n📤 RESPONSE DETAILS:")
-        print(f"   📏 Length: {len(log_entry.final_response)} characters")
-        print(f"   📝 Content: {log_entry.final_response[:200]}{'...' if len(log_entry.final_response) > 200 else ''}")
+        print(f"\nRESPONSE DETAILS:")
+        print(f"   Length: {len(log_entry.final_response)} characters")
+        print(f"   Content: {log_entry.final_response[:200]}{'...' if len(log_entry.final_response) > 200 else ''}")
         
         # Memory Context
-        print(f"\n🧠 CONVERSATION CONTEXT:")
+        print(f"\nCONVERSATION CONTEXT:")
         if log_entry.memory_context:
             for i, msg in enumerate(log_entry.memory_context[-4:]):  # Show last 2 exchanges
-                role_icon = "👤" if msg["role"] == "user" else "🤖"
-                print(f"   {role_icon} {msg['role'].title()}: {msg['content'][:100]}{'...' if len(msg['content']) > 100 else ''}")
+                role_label = "User" if msg["role"] == "user" else "Assistant"
+                print(f"   [{role_label}] {msg['content'][:100]}{'...' if len(msg['content']) > 100 else ''}")
         else:
-            print("   📝 No previous context")
+            print("   No previous context")
         
         # Error Details (if any)
         if log_entry.error_details:
-            print(f"\n❌ ERROR DETAILS:")
-            print(f"   🔍 Error: {log_entry.error_details}")
+            print(f"\nERROR DETAILS:")
+            print(f"   {log_entry.error_details}")
         
         print("=" * 80)
     
@@ -459,8 +459,8 @@ RESPONSE:"""
         Memory Storage → Structured Logging → Response
         """
         
-        print(f"\n🚀 PROCESSING PIPELINE STARTED")
-        print(f"📥 Raw User Input: '{user_input}'")
+        print(f"\n[INFO] Processing pipeline started")
+        print(f"Raw user input: '{user_input}'")
         
         start_time = time.time()
         
@@ -470,7 +470,7 @@ RESPONSE:"""
             
             # Step 2: Generate Master Prompt
             master_prompt = self.get_master_prompt(preprocessed_input)
-            print(f"\n📋 MASTER PROMPT GENERATED ({len(master_prompt)} chars)")
+            print(f"\n[INFO] Master prompt generated ({len(master_prompt)} chars)")
             
             # Step 3: Sequential Model Execution
             model_response = self.execute_model_sequential(master_prompt)
@@ -506,7 +506,7 @@ RESPONSE:"""
             
         except Exception as e:
             error_msg = f"Pipeline error: {str(e)}"
-            print(f"\n💥 PIPELINE ERROR: {error_msg}")
+            print(f"\n[ERROR] Pipeline error: {error_msg}")
             
             return {
                 "success": False,
@@ -546,7 +546,7 @@ RESPONSE:"""
     def clear_memory(self):
         """Clear conversation memory"""
         self.memory.clear()
-        print("\n🧠 MEMORY CLEARED")
+        print("\n[INFO] Memory cleared")
     
     def get_recent_logs(self, limit: int = 5) -> List[Dict[str, Any]]:
         """Get recent processing logs"""

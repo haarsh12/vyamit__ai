@@ -1,7 +1,5 @@
 """
-🔍 Vector Search Service - Production Ready
-Integration service for RAG-based inventory search with multilingual support
-Uses the tested and working vector RAG system
+Vector Search Service — RAG-based inventory search with multilingual embeddings.
 """
 
 import os
@@ -29,16 +27,18 @@ class VectorSearchService:
     
     def _initialize(self):
         """Initialize the service (singleton pattern) - Production Ready"""
-        print("🚀 Initializing Vector Search Service (Production)...")
+        print("[INFO] Initializing Vector Search Service...")
         
         try:
-            # Database connection
+            # Database connection (same URL rules as app.db.database)
             database_url = os.getenv("DATABASE_URL")
             if not database_url:
-                raise ValueError("❌ DATABASE_URL not found in environment variables")
+                raise ValueError("DATABASE_URL not found in environment variables")
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://", 1)
             
-            self._engine = create_engine(database_url)
-            print("✅ Database connection established")
+            self._engine = create_engine(database_url, pool_pre_ping=True, pool_recycle=300)
+            print("[OK] Database connection established for vector service.")
             
             # Test database connection and vector extension
             with self._engine.connect() as conn:
@@ -48,10 +48,10 @@ class VectorSearchService:
                 # Check vector extension
                 result = conn.execute(text("SELECT extname FROM pg_extension WHERE extname = 'vector'"))
                 if not result.fetchone():
-                    print("⚠️ Vector extension not found - attempting to enable...")
+                    print("[WARN] Vector extension not found — attempting to enable...")
                     conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
                     conn.commit()
-                    print("✅ Vector extension enabled")
+                    print("[OK] Vector extension enabled.")
                 
                 # Check embedding column exists
                 result = conn.execute(text("""
@@ -60,10 +60,10 @@ class VectorSearchService:
                     WHERE table_name = 'item' AND column_name = 'embedding'
                 """))
                 if not result.fetchone():
-                    print("⚠️ Embedding column not found - adding...")
+                    print("[WARN] Embedding column not found — adding...")
                     conn.execute(text("ALTER TABLE item ADD COLUMN IF NOT EXISTS embedding vector(384)"))
                     conn.commit()
-                    print("✅ Embedding column added")
+                    print("[OK] Embedding column added.")
                 
                 # Create vector index if not exists
                 conn.execute(text("""
@@ -72,21 +72,21 @@ class VectorSearchService:
                     WITH (lists = 100)
                 """))
                 conn.commit()
-                print("✅ Vector index ensured")
+                print("[OK] Vector index ensured.")
             
             # Load embedding model
-            print("📦 Loading intfloat/multilingual-e5-small model...")
+            print("[INFO] Loading intfloat/multilingual-e5-small model...")
             start_time = time.time()
             self._model = SentenceTransformer("intfloat/multilingual-e5-small")
             load_time = time.time() - start_time
-            print(f"✅ Model loaded in {load_time:.2f}s")
-            print(f"📊 Model embedding dimension: {self._model.get_sentence_embedding_dimension()}")
+            print(f"[OK] Model loaded in {load_time:.2f}s")
+            print(f"[INFO] Model embedding dimension: {self._model.get_sentence_embedding_dimension()}")
             
             self._initialized = True
-            print("🎉 Vector Search Service initialized successfully!")
+            print("[OK] Vector Search Service initialized successfully.")
             
         except Exception as e:
-            print(f"❌ Vector Search Service initialization failed: {str(e)}")
+            print(f"[ERROR] Vector Search Service initialization failed: {str(e)}")
             raise e
     
     def search_items(
@@ -109,7 +109,7 @@ class VectorSearchService:
             List of matching items with similarity scores
         """
         if debug:
-            print(f"🔍 Vector search: '{query}' (top {top_k}, threshold {similarity_threshold})")
+            print(f"[DEBUG] Vector search: '{query}' (top {top_k}, threshold {similarity_threshold})")
         
         try:
             # Generate query embedding
@@ -119,9 +119,9 @@ class VectorSearchService:
             embed_time = time.time() - start_time
             
             if debug:
-                print(f"🧠 Query embedded in {embed_time:.3f}s")
-                print(f"📏 Embedding shape: {query_embedding.shape}")
-                print(f"🔢 First 3 values: {query_embedding[:3].round(4)}")
+                print(f"[DEBUG] Query embedded in {embed_time:.3f}s")
+                print(f"[DEBUG] Embedding shape: {query_embedding.shape}")
+                print(f"[DEBUG] First 3 values: {query_embedding[:3].round(4)}")
             
             # Search database using direct SQL (tested and working)
             with self._engine.connect() as conn:
@@ -147,7 +147,7 @@ class VectorSearchService:
                 matches = result.fetchall()
                 
                 if debug:
-                    print(f"📊 Found {len(matches)} matches above threshold {similarity_threshold}")
+                    print(f"[DEBUG] Found {len(matches)} matches above threshold {similarity_threshold}")
                 
                 # Convert to structured format
                 results = []
@@ -178,21 +178,21 @@ class VectorSearchService:
                         results.append(result_dict)
                         
                         if debug:
-                            similarity_emoji = "🟢" if match.similarity > 0.8 else "🟡" if match.similarity > 0.6 else "🟠"
-                            print(f"   {i+1:2d}. {similarity_emoji} {result_dict['primary_name']:<20} | {match.similarity:.3f}")
+                            band = "high" if match.similarity > 0.8 else "med" if match.similarity > 0.6 else "low"
+                            print(f"   {i+1:2d}. [{band}] {result_dict['primary_name']:<20} | {match.similarity:.3f}")
                             if len(names_list) > 1:
                                 alt_names = ", ".join(names_list[1:3])
                                 print(f"       Also: {alt_names}")
                     
                     except Exception as e:
                         if debug:
-                            print(f"⚠️ Error processing match {i}: {str(e)}")
+                            print(f"[WARN] Error processing match {i}: {str(e)}")
                         continue
                 
                 return results
                 
         except Exception as e:
-            print(f"❌ Vector search error: {str(e)}")
+            print(f"[ERROR] Vector search error: {str(e)}")
             if debug:
                 import traceback
                 traceback.print_exc()
@@ -235,7 +235,7 @@ class VectorSearchService:
             return " | ".join(text_parts)
             
         except Exception as e:
-            print(f"❌ Error creating embedding text: {str(e)}")
+            print(f"[ERROR] Error creating embedding text: {str(e)}")
             return f"passage: {item_data.get('names', ['Unknown'])[0] if isinstance(item_data.get('names', []), list) else item_data.get('names', 'Unknown')}"
     
     def embed_item(self, item_data: Dict[str, Any]) -> Optional[List[float]]:
@@ -256,7 +256,7 @@ class VectorSearchService:
             return embedding.tolist()
             
         except Exception as e:
-            print(f"❌ Embedding generation error: {str(e)}")
+            print(f"[ERROR] Embedding generation error: {str(e)}")
             return None
     
     def update_item_embedding(self, item_id: int, item_data: Dict[str, Any]) -> bool:
@@ -286,11 +286,11 @@ class VectorSearchService:
                 })
                 conn.commit()
             
-            print(f"✅ Updated embedding for item {item_id}")
+            print(f"[OK] Updated embedding for item {item_id}")
             return True
             
         except Exception as e:
-            print(f"❌ Update embedding error for item {item_id}: {str(e)}")
+            print(f"[ERROR] Update embedding error for item {item_id}: {str(e)}")
             return False
     
     def embed_all_items(self, batch_size: int = 50) -> Dict[str, Any]:
@@ -303,7 +303,7 @@ class VectorSearchService:
         Returns:
             Dictionary with embedding statistics
         """
-        print("🚀 Starting batch embedding process...")
+        print("[INFO] Starting batch embedding process...")
         
         try:
             with self._engine.connect() as conn:
@@ -327,7 +327,7 @@ class VectorSearchService:
                         "failed_items": 0
                     }
                 
-                print(f"📦 Found {total_items} items to embed")
+                print(f"[INFO] Found {total_items} items to embed")
                 
                 embedded_count = 0
                 failed_count = 0
@@ -338,7 +338,7 @@ class VectorSearchService:
                     batch_num = (i // batch_size) + 1
                     total_batches = (total_items + batch_size - 1) // batch_size
                     
-                    print(f"📦 Processing batch {batch_num}/{total_batches} ({len(batch)} items)")
+                    print(f"[INFO] Processing batch {batch_num}/{total_batches} ({len(batch)} items)")
                     
                     for item in batch:
                         try:
@@ -362,14 +362,14 @@ class VectorSearchService:
                                 embedded_count += 1
                             else:
                                 failed_count += 1
-                                print(f"⚠️ Failed to embed item {item.id}")
+                                print(f"[WARN] Failed to embed item {item.id}")
                                 
                         except Exception as e:
                             failed_count += 1
-                            print(f"❌ Error embedding item {item.id}: {str(e)}")
+                            print(f"[ERROR] Error embedding item {item.id}: {str(e)}")
                     
                     conn.commit()
-                    print(f"✅ Batch {batch_num} completed")
+                    print(f"[OK] Batch {batch_num} completed")
                 
                 return {
                     "success": True,
@@ -380,7 +380,7 @@ class VectorSearchService:
                 }
                 
         except Exception as e:
-            print(f"❌ Batch embedding error: {str(e)}")
+            print(f"[ERROR] Batch embedding error: {str(e)}")
             return {
                 "success": False,
                 "error": str(e),
@@ -411,7 +411,7 @@ class VectorSearchService:
                 }
                 
         except Exception as e:
-            print(f"❌ Error getting embedding stats: {str(e)}")
+            print(f"[ERROR] Error getting embedding stats: {str(e)}")
             return {
                 'total_items': 0,
                 'items_with_embeddings': 0,
@@ -486,7 +486,7 @@ class VectorSearchService:
                 return results
                 
         except Exception as e:
-            print(f"❌ Similar items error: {str(e)}")
+            print(f"[ERROR] Similar items error: {str(e)}")
             return []
 
 # Global instance - Production Ready Singleton

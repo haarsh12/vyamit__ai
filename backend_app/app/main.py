@@ -16,11 +16,11 @@ async def lifespan(app: FastAPI):
     print("Startup: Checking database connection...")
     try:
         create_db_and_tables()
-        print("✅ Database connected successfully!")
+        print("[OK] Database connected successfully.")
     except Exception as e:
-        print(f"⚠️ Database connection failed: {str(e)[:100]}")
-        print("⚠️ Server will start but database operations will fail")
-        print("💡 TIP: Check DATABASE_CONNECTION_FIX.md for solutions")
+        print(f"[WARN] Database connection failed: {str(e)[:100]}")
+        print("[WARN] Server will start but database operations will fail.")
+        print("[TIP] See DATABASE_CONNECTION_FIX.md or set DATABASE_URL in the host environment.")
     
     # Initialize Vector Search Service
     print("Startup: Initializing Vector Search Service...")
@@ -28,16 +28,16 @@ async def lifespan(app: FastAPI):
         from app.services.vector_search_service import vector_search_service
         # The service will initialize itself when first accessed
         stats = vector_search_service.get_embedding_stats()
-        print(f"✅ Vector Search Service ready! Coverage: {stats['coverage_percent']:.1f}%")
+        print(f"[OK] Vector Search Service ready. Coverage: {stats['coverage_percent']:.1f}%")
         
         if stats['coverage_percent'] < 100:
-            print(f"⚠️ {stats['missing_embeddings']} items need embeddings")
-            print("💡 TIP: Use /vector/embed-all endpoint to generate missing embeddings")
+            print(f"[WARN] {stats['missing_embeddings']} items need embeddings.")
+            print("[TIP] Use POST /vector/embed-all to generate missing embeddings.")
         
     except Exception as e:
-        print(f"⚠️ Vector Search Service initialization warning: {str(e)[:100]}")
-        print("⚠️ Vector search will be available but may need setup")
-        print("💡 TIP: Check vector extension and run /vector/health endpoint")
+        print(f"[WARN] Vector Search Service initialization: {str(e)[:100]}")
+        print("[WARN] Vector search may need pgvector setup or DATABASE_URL.")
+        print("[TIP] Check GET /vector/health after deployment.")
     
     yield
     print("Shutdown: Closing connections...")
@@ -62,5 +62,11 @@ app.include_router(analytics.router, prefix="/analytics", tags=["Analytics & Das
 app.include_router(vector_search.router, prefix="/vector", tags=["Vector Search & RAG"])
 
 @app.get("/")
-def health_check():
+def root():
     return {"status": "active", "system": "SnapBill Backend"}
+
+
+@app.get("/health")
+def health_check():
+    """Load balancer / Render health check (no DB probe — keeps checks fast)."""
+    return {"status": "ok"}

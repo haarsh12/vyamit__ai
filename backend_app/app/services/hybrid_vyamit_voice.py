@@ -117,7 +117,7 @@ class HybridVyamitVoiceService:
     def _ensure_hf_llm(self, repo_id: str, label: str) -> Optional[HuggingFaceEndpoint]:
         token = _hf_token()
         if not token:
-            print("⚠️ Hybrid: No HUGGINGFACE_API_TOKEN / HF_TOKEN — skipping HF models.")
+            print("[WARN] Hybrid: No HUGGINGFACE_API_TOKEN / HF_TOKEN — skipping HF models.")
             return None
         try:
             return HuggingFaceEndpoint(
@@ -130,27 +130,27 @@ class HybridVyamitVoiceService:
                 do_sample=True,
             )
         except Exception as e:
-            print(f"⚠️ Hybrid: Failed to build HuggingFaceEndpoint for {label} ({repo_id}): {e}")
+            print(f"[WARN] Hybrid: Failed to build HuggingFaceEndpoint for {label} ({repo_id}): {e}")
             return None
 
     def _invoke_hf(
         self, llm: HuggingFaceEndpoint, label: str, repo_id: str, prompt: str
     ) -> Optional[str]:
         t0 = time.perf_counter()
-        print(f"\n  ▶ [{label}] repo={repo_id}")
-        print(f"  ▶ Prompt length: {len(prompt)} chars")
+        print(f"\n  >> [{label}] repo={repo_id}")
+        print(f"  >> Prompt length: {len(prompt)} chars")
         try:
             out = llm.invoke(prompt)
             dt = time.perf_counter() - t0
             text = out if isinstance(out, str) else str(out)
-            print(f"  ✓ [{label}] OK in {dt:.2f}s")
+            print(f"  [OK] [{label}] in {dt:.2f}s")
             print(textwrap.indent(text[:4000], "  │ "))
             if len(text) > 4000:
                 print(f"  │ ... ({len(text)} chars total, truncated in log)")
             return text
         except Exception as e:
             dt = time.perf_counter() - t0
-            print(f"  ✗ [{label}] FAILED after {dt:.2f}s: {e}")
+            print(f"  [FAIL] [{label}] after {dt:.2f}s: {e}")
             return None
 
     def process_voice_command(
@@ -177,7 +177,7 @@ class HybridVyamitVoiceService:
         token = _hf_token()
         last_error = ""
         if not token:
-            print("\n⚠️ HYBRID: No HUGGINGFACE_API_TOKEN / HF_TOKEN — skipping Qwen & Gemma; using Gemini only.")
+            print("\n[WARN] HYBRID: No HUGGINGFACE_API_TOKEN / HF_TOKEN — skipping Qwen and Gemma; using Gemini only.")
 
         # 1) Qwen
         if token:
@@ -189,13 +189,13 @@ class HybridVyamitVoiceService:
                 )
                 parsed = _parse_bill_json(raw) if raw else None
                 if parsed is not None:
-                    print("\n✅ HYBRID: Qwen produced valid Vyamit JSON.")
+                    print("\n[OK] HYBRID: Qwen produced valid Vyamit JSON.")
                     memory.add_user_message(user_text)
                     memory.add_ai_message(json.dumps(parsed, ensure_ascii=False)[:2000])
                     _banner("VYAMIT HYBRID LLM — PIPELINE END (winner: QWEN)")
                     return parsed
                 last_error = "Qwen: no valid JSON with 'type' field"
-                print(f"\n⚠️ HYBRID: {last_error}; falling through to Gemini.")
+                print(f"\n[WARN] HYBRID: {last_error}; falling through to Gemini.")
 
         # 2) Gemini (unchanged google-generativeai stack via AIService.run_gemini_only)
         print("\n─── GEMINI (official google-generativeai) ───")
@@ -207,13 +207,13 @@ class HybridVyamitVoiceService:
             "msg", ""
         )
         if not gemini_system_outage:
-            print(f"\n✅ HYBRID: Gemini completed in {dt:.2f}s → type={gemini_out.get('type')}")
+            print(f"\n[OK] HYBRID: Gemini completed in {dt:.2f}s; type={gemini_out.get('type')}")
             memory.add_user_message(user_text)
             memory.add_ai_message(json.dumps(gemini_out, ensure_ascii=False)[:2000])
             _banner("VYAMIT HYBRID LLM — PIPELINE END (winner: GEMINI)")
             return gemini_out
         last_error = f"Gemini all candidate models failed: {gemini_out.get('msg', '')}"
-        print(f"\n⚠️ HYBRID: {last_error}; trying Gemma.")
+        print(f"\n[WARN] HYBRID: {last_error}; trying Gemma.")
 
         # 3) Gemma
         if token:
@@ -225,13 +225,13 @@ class HybridVyamitVoiceService:
                 )
                 parsed_g = _parse_bill_json(raw_g) if raw_g else None
                 if parsed_g is not None:
-                    print("\n✅ HYBRID: Gemma produced valid Vyamit JSON.")
+                    print("\n[OK] HYBRID: Gemma produced valid Vyamit JSON.")
                     memory.add_user_message(user_text)
                     memory.add_ai_message(json.dumps(parsed_g, ensure_ascii=False)[:2000])
                     _banner("VYAMIT HYBRID LLM — PIPELINE END (winner: GEMMA)")
                     return parsed_g
 
-        print(f"\n❌ HYBRID: All stages failed. Last note: {last_error}")
+        print(f"\n[ERROR] HYBRID: All stages failed. Last note: {last_error}")
         _banner("VYAMIT HYBRID LLM — PIPELINE END (FAILED)")
         return {
             "type": "ERROR",

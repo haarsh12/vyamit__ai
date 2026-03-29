@@ -235,24 +235,24 @@ class StructuredLogger:
         
         # Analysis
         analysis = log_entry['analysis']
-        print(f"\n🔍 QUERY ANALYSIS:")
+        print(f"\n[INFO] QUERY ANALYSIS:")
         print(f"   • Language: {analysis['language'].upper()}")
         print(f"   • Complexity: {analysis['complexity'].upper()}")
         print(f"   • Task Type: {analysis['task_type'].upper()}")
         print(f"   • Word Count: {analysis['word_count']}")
-        print(f"   • Has Numbers: {'✅' if analysis['has_numbers'] else '❌'}")
-        print(f"   • Is Billing: {'✅' if analysis['is_billing'] else '❌'}")
+        print(f"   • Has Numbers: {'yes' if analysis['has_numbers'] else 'no'}")
+        print(f"   • Is Billing: {'yes' if analysis['is_billing'] else 'no'}")
         
         # Routing Decision
         routing = log_entry['routing']
-        print(f"\n🧠 MODEL ROUTING:")
+        print(f"\n[INFO] MODEL ROUTING:")
         print(f"   • Selected: {routing['selected_model'].upper()}")
         print(f"   • Reason: {routing['routing_reason']}")
         print(f"   • Scores: {routing['model_scores']}")
         
         # Execution
         execution = log_entry['execution']
-        status_icon = "✅" if execution['success'] else "❌"
+        status_icon = "OK" if execution['success'] else "FAIL"
         print(f"\n⚡ EXECUTION:")
         print(f"   • Status: {status_icon} {'SUCCESS' if execution['success'] else 'FAILED'}")
         print(f"   • Latency: {execution['latency_ms']}ms")
@@ -318,8 +318,8 @@ class AdaptiveMultiLLMService:
         # Chat memory
         self.memory = deque(maxlen=20)
         
-        print("🚀 Adaptive Multi-LLM Routing System Initialized")
-        print("📊 Models: Qwen (Fast) | Gemini (Smart)")
+        print("[INFO] Adaptive Multi-LLM Routing System initialized")
+        print("[INFO] Models: Qwen (fast) | Gemini (smart)")
     
     def _initialize_models(self):
         """Initialize all AI models with fallback chains"""
@@ -351,13 +351,13 @@ class AdaptiveMultiLLMService:
                 import google.generativeai as genai
                 genai.configure(api_key=os.getenv("GEMINI_API_KEY"), transport="rest")
                 self.genai = genai
-                print("✅ Gemini API initialized")
+                print("[OK] Gemini API initialized")
             except Exception as e:
-                print(f"⚠️ Gemini initialization failed: {e}")
+                print(f"[WARN] Gemini initialization failed: {e}")
                 self.gemini_available = False
         
-        print(f"🔧 Model Status: Qwen={'✅' if self.qwen_available else '❌'} | "
-              f"Gemini={'✅' if self.gemini_available else '❌'}")
+        print(f"[INFO] Model status: Qwen={'OK' if self.qwen_available else 'OFF'} | "
+              f"Gemini={'OK' if self.gemini_available else 'OFF'}")
     
     def process_with_qwen_fallback(self, prompt: str) -> str:
         """Process using Qwen with model fallback chain - FIXED VERSION"""
@@ -365,7 +365,7 @@ class AdaptiveMultiLLMService:
         
         for model_name in self.qwen_models:
             try:
-                print(f"🔄 Trying Qwen model: {model_name}")
+                print(f"[INFO] Trying Qwen model: {model_name}")
                 url = f"https://router.huggingface.co/models/{model_name}"
                 headers = {"Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_TOKEN')}"}
                 
@@ -391,28 +391,28 @@ class AdaptiveMultiLLMService:
                     if isinstance(result, list) and len(result) > 0:
                         generated_text = result[0].get("generated_text", "").strip()
                         if generated_text:
-                            print(f"✅ SUCCESS! Qwen model '{model_name}' worked.")
+                            print(f"[OK] Qwen model '{model_name}' succeeded.")
                             return generated_text
                     elif isinstance(result, dict) and "generated_text" in result:
                         generated_text = result["generated_text"].strip()
                         if generated_text:
-                            print(f"✅ SUCCESS! Qwen model '{model_name}' worked.")
+                            print(f"[OK] Qwen model '{model_name}' succeeded.")
                             return generated_text
                     
-                    print(f"⚠️ {model_name} returned empty response")
+                    print(f"[WARN] {model_name} returned empty response")
                     last_error = f"Empty response from {model_name}"
                     continue
                     
                 elif response.status_code == 503:
-                    print(f"⚠️ {model_name} is loading, trying next...")
+                    print(f"[WARN] {model_name} is loading, trying next...")
                     last_error = f"Model {model_name} is loading"
                     continue
                 elif response.status_code == 429:
-                    print(f"⚠️ {model_name} rate limited, trying next...")
+                    print(f"[WARN] {model_name} rate limited, trying next...")
                     last_error = f"Rate limited for {model_name}"
                     continue
                 else:
-                    print(f"⚠️ {model_name} failed: HTTP {response.status_code}")
+                    print(f"[WARN] {model_name} failed: HTTP {response.status_code}")
                     try:
                         error_detail = response.json()
                         print(f"   Error details: {error_detail}")
@@ -422,15 +422,15 @@ class AdaptiveMultiLLMService:
                     continue
                     
             except requests.exceptions.Timeout:
-                print(f"⚠️ {model_name} timed out")
+                print(f"[WARN] {model_name} timed out")
                 last_error = f"Timeout for {model_name}"
                 continue
             except Exception as e:
-                print(f"⚠️ {model_name} error: {e}")
+                print(f"[WARN] {model_name} error: {e}")
                 last_error = str(e)
                 continue
         
-        print(f"\n❌ ALL QWEN MODELS FAILED. Last Error: {last_error}\n")
+        print(f"\n[ERROR] All Qwen models failed. Last error: {last_error}\n")
         raise Exception(f"All Qwen models failed: {last_error}")
     
     # Gemma processing removed as per user request - only using Qwen → Gemini → Fallback
@@ -441,7 +441,7 @@ class AdaptiveMultiLLMService:
         
         for model_name in self.gemini_models:
             try:
-                print(f"🔄 Trying Gemini model: {model_name}")
+                print(f"[INFO] Trying Gemini model: {model_name}")
                 model = self.genai.GenerativeModel(model_name)
                 
                 # Add generation config to avoid MessageToJson issues
@@ -458,19 +458,19 @@ class AdaptiveMultiLLMService:
                 )
                 
                 if response and response.text:
-                    print(f"✅ SUCCESS! Gemini model '{model_name}' worked.")
+                    print(f"[OK] Gemini model '{model_name}' succeeded.")
                     return response.text
                 else:
-                    print(f"⚠️ {model_name} returned empty response")
+                    print(f"[WARN] {model_name} returned empty response")
                     last_error = f"Empty response from {model_name}"
                     continue
                     
             except Exception as e:
-                print(f"⚠️ {model_name} failed: {e}")
+                print(f"[WARN] {model_name} failed: {e}")
                 last_error = str(e)
                 continue
         
-        print(f"\n❌ ALL GEMINI MODELS FAILED. Last Error: {last_error}\n")
+        print(f"\n[ERROR] All Gemini models failed. Last error: {last_error}\n")
         raise Exception(f"All Gemini models failed: {last_error}")
     
     def get_vyamit_prompt(self, user_text: str, inventory_json: str = "") -> str:
@@ -678,31 +678,31 @@ EXAMPLES:
         for attempt_model in fallback_chain:
             try:
                 if attempt_model == 'gemini' and self.gemini_available:
-                    print(f"🚀 Attempting GEMINI (Smart Reasoning)")
+                    print(f"[INFO] Attempting GEMINI (smart reasoning)")
                     response_text = self.process_with_gemini_fallback(prompt)
                     final_model_used = 'gemini'
                     break
                     
                 elif attempt_model == 'qwen' and self.qwen_available:
-                    print(f"🚀 Attempting QWEN (Fast Multilingual)")
+                    print(f"[INFO] Attempting QWEN (fast multilingual)")
                     response_text = self.process_with_qwen_fallback(prompt)
                     final_model_used = 'qwen'
                     break
                     
                 elif attempt_model == 'enhanced_fallback':
-                    print(f"🚀 Using ENHANCED FALLBACK (Rule-based)")
+                    print(f"[INFO] Using enhanced fallback (rule-based)")
                     response_text = self.get_enhanced_fallback_response(user_text, features)
                     final_model_used = 'enhanced_fallback'
                     break
                     
             except Exception as e:
-                print(f"❌ {attempt_model.upper()} failed: {e}")
+                print(f"[ERROR] {attempt_model.upper()} failed: {e}")
                 error = str(e)
                 continue
         
         # If somehow nothing worked, use basic fallback
         if not response_text:
-            print(f"🚀 Using BASIC FALLBACK (Last resort)")
+            print(f"[INFO] Using basic fallback (last resort)")
             response_text = '{"type": "ERROR", "customer_name": "Walk-in", "items": [], "msg": "System busy, please try again", "should_stop": false}'
             final_model_used = 'basic_fallback'
         

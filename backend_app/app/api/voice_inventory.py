@@ -58,7 +58,7 @@ async def parse_voice_inventory_endpoint(
     """
     
     try:
-        print(f"🎙️ Voice inventory parse request from user {user_id}")
+        print(f"[INFO] Voice inventory parse request from user {user_id}")
         print(f"📝 Raw text: {request.raw_text}")
         
         # Get user's existing inventory
@@ -81,12 +81,12 @@ async def parse_voice_inventory_endpoint(
                 })
                 categories_set.add(item.category)
             except Exception as e:
-                print(f"❌ Error processing item {item.id}: {e}")
+                print(f"[ERROR] Error processing item {item.id}: {e}")
                 continue
         
         existing_categories = list(categories_set)
         
-        print(f"📦 User has {len(items_data)} items in {len(existing_categories)} categories")
+        print(f"[INFO] User has {len(items_data)} items in {len(existing_categories)} categories")
         
         # Parse voice input using AI
         parsed_data = parse_voice_inventory(
@@ -95,10 +95,10 @@ async def parse_voice_inventory_endpoint(
             existing_categories=existing_categories
         )
         
-        print(f"✅ Parsed {len(parsed_data.get('categories', []))} categories")
+        print(f"[OK] Parsed {len(parsed_data.get('categories', []))} categories")
         
         return parsed_data
         
     except Exception as e:
-        print(f"❌ Voice inventory parse error: {e}")
+        print(f"[ERROR] Voice inventory parse error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to parse voice inventory: {str(e)}")

@@ -1,7 +1,5 @@
 """
-🔍 Vector Search API Endpoints - Production Ready
-RAG-based inventory search with multilingual support
-Integrated with tested and working vector RAG system
+Vector Search API — RAG-based inventory search with multilingual support.
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
@@ -43,8 +41,8 @@ class EmbedAllResponse(BaseModel):
 @router.post("/search", response_model=SearchResponse)
 async def search_inventory(request: SearchRequest):
     """
-    🔍 Search inventory using vector similarity - Production Ready
-    
+    Search inventory using vector similarity.
+
     Supports multilingual queries in Hindi, English, Hinglish, and Marathi.
     Returns 10+ matches with detailed similarity scores and confidence levels.
     
@@ -101,9 +99,7 @@ async def search_inventory_get(
     debug: bool = Query(False, description="Enable debug output")
 ):
     """
-    🔍 Search inventory using GET request - Production Ready
-    
-    Easy to test endpoint for vector search.
+    Search inventory using GET (easy to test in a browser).
     Example: /vector/search?q=tamatar ka rate&top_k=10&debug=true
     """
     request = SearchRequest(
@@ -118,9 +114,9 @@ async def search_inventory_get(
 @router.post("/embed-item")
 async def embed_single_item(request: EmbedItemRequest):
     """
-    🧠 Generate and store embedding for a single item - Production Ready
-    
-    Use this when adding new items or updating existing items.
+    Generate and store embedding for a single item.
+
+    Use when adding new items or updating existing items.
     """
     try:
         item_data = {
@@ -153,9 +149,9 @@ async def embed_all_items(
     batch_size: int = Query(50, ge=1, le=100, description="Batch size for processing")
 ):
     """
-    🚀 Generate embeddings for all items that don't have them - Production Ready
-    
-    This is a one-time setup operation or can be run when you add many new items.
+    Generate embeddings for all items that do not have them yet.
+
+    One-time setup or after bulk imports; processes in batches.
     Processes items in batches for efficiency.
     """
     try:
@@ -183,9 +179,7 @@ async def embed_all_items(
 @router.get("/stats")
 async def get_embedding_statistics():
     """
-    📊 Get current embedding statistics - Production Ready
-    
-    Shows how many items have embeddings and coverage percentage.
+    Current embedding statistics (counts and coverage percentage).
     """
     try:
         stats = vector_search_service.get_embedding_stats()
@@ -209,9 +203,7 @@ async def get_similar_items(
     top_k: int = Query(5, ge=1, le=20, description="Number of similar items to return")
 ):
     """
-    🔗 Find items similar to a given item - Production Ready
-    
-    Useful for recommendations and finding related products.
+    Find items similar to a given item (recommendations / related products).
     """
     try:
         similar_items = vector_search_service.get_similar_items(
@@ -232,9 +224,7 @@ async def get_similar_items(
 @router.get("/test-queries")
 async def test_multilingual_queries():
     """
-    🧪 Test the system with predefined multilingual queries - Production Ready
-    
-    Use this to verify that the vector search is working correctly.
+    Run predefined multilingual queries to verify vector search.
     """
     test_queries = [
         "tamatar ka rate kya hai",           # Hinglish - tomato
@@ -289,9 +279,7 @@ async def test_multilingual_queries():
 @router.get("/health")
 async def health_check():
     """
-    ❤️ Health check for vector search service - Production Ready
-    
-    Verifies that the service is working correctly.
+    Health check for the vector search service (DB + model + sample query).
     """
     try:
         # Test embedding stats

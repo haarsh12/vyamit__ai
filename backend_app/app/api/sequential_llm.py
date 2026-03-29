@@ -165,7 +165,7 @@ async def demo_test():
         results = []
         
         for query in test_queries:
-            print(f"\n🧪 DEMO TEST: Processing '{query}'")
+            print(f"\n[INFO] DEMO TEST: Processing '{query}'")
             result = await service.process_query(query)
             results.append({
                 "query": query,

@@ -46,18 +46,18 @@ async def send_bill_via_sms(request: SMSShareRequest):
         )
         
         if result['success']:
-            print(f"✅ SMS sent successfully: {result['sid']}")
+            print(f"[OK] SMS sent successfully: {result['sid']}")
             return {
                 "success": True,
                 "message": "Bill sent via SMS",
                 "sid": result['sid']
             }
         else:
-            print(f"❌ SMS failed: {result['error']}")
+            print(f"[ERROR] SMS failed: {result['error']}")
             raise HTTPException(status_code=500, detail=result['error'])
             
     except Exception as e:
-        print(f"❌ SMS share error: {e}")
+        print(f"[ERROR] SMS share error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to send SMS: {str(e)}")
 
 

@@ -56,7 +56,7 @@ def create_item(
         session.commit()
         session.refresh(existing_item)
         
-        print(f"✅ Updated existing item: {item.id}")
+        print(f"[OK] Updated existing item: {item.id}")
         
         return {
             "id": existing_item.master_id,  # Return master_id as id
@@ -84,7 +84,7 @@ def create_item(
     session.commit()
     session.refresh(new_item)
     
-    print(f"✅ Created new item: {item.id}")
+    print(f"[OK] Created new item: {item.id}")
     
     # Return with names as array
     return {
@@ -125,13 +125,13 @@ def get_items(
                     "master_id": item.master_id
                 })
             except Exception as e:
-                print(f"❌ Error processing item {item.id}: {e}")
+                print(f"[ERROR] Error processing item {item.id}: {e}")
                 continue
         
-        print(f"📦 Fetched {len(response_items)} items for user {user_id}")
+        print(f"[INFO] Fetched {len(response_items)} items for user {user_id}")
         return response_items
     except Exception as e:
-        print(f"❌ Error in get_items: {e}")
+        print(f"[ERROR] Error in get_items: {e}")
         # Return empty list instead of error to prevent frontend crash
         return []
 
@@ -167,7 +167,7 @@ def update_item(
     session.commit()
     session.refresh(existing_item)
     
-    print(f"🔄 Updated item: {item_id}")
+    print(f"[OK] Updated item: {item_id}")
     
     # Return updated item
     return {
@@ -204,6 +204,6 @@ def delete_item(
     session.delete(existing_item)
     session.commit()
     
-    print(f"🗑️ Deleted item: {item_id}")
+    print(f"[OK] Deleted item: {item_id}")
     
     return {"message": "Item deleted successfully"}

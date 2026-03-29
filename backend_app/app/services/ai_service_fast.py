@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 # Configure Gemini
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
-    print("\n❌ ERROR: GEMINI_API_KEY is missing!\n")
+    print("\n[ERROR] GEMINI_API_KEY is missing.\n")
 else:
     genai.configure(api_key=api_key, transport="rest")
 
@@ -27,11 +27,11 @@ class AIServiceFast:
         dashboard_data: Optional[Dict[str, Any]] = None,
         recent_bills: Optional[List[Dict[str, Any]]] = None
     ):
-        print(f"\n🎤 Processing Voice: {user_text}")
+        print(f"\n[INFO] Processing voice: {user_text}")
         
         # Filter inventory
         filtered_inventory = [item for item in inventory if item.price > 0]
-        print(f"📦 Items: {len(filtered_inventory)}")
+        print(f"[INFO] Items: {len(filtered_inventory)}")
         
         # MINIMAL Inventory
         inventory_list = []
@@ -86,20 +86,20 @@ EXAMPLES:
         # Try fast models
         for model_name in self.candidate_models:
             try:
-                print(f"🔄 {model_name}...")
+                print(f"[INFO] {model_name}...")
                 model = genai.GenerativeModel(model_name)
                 response = model.generate_content(prompt)
                 
-                print(f"✅ {model_name} worked")
+                print(f"[OK] {model_name} worked")
                 
                 clean_text = response.text.replace("```json", "").replace("```", "").strip()
                 return json.loads(clean_text)
                 
             except Exception as e:
-                print(f"⚠️ {model_name} failed: {e}")
+                print(f"[WARN] {model_name} failed: {e}")
                 continue
         
-        print(f"\n❌ ALL MODELS FAILED\n")
+        print(f"\n[ERROR] All models failed.\n")
         return {
             "type": "ERROR",
             "items": [],

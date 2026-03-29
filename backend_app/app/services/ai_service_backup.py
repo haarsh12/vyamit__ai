@@ -7,7 +7,7 @@ from typing import List
 # 1. Configure Gemini
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
-    print("\n❌ ERROR: GEMINI_API_KEY is missing!\n")
+    print("\n[ERROR] GEMINI_API_KEY is missing.\n")
 else:
     genai.configure(api_key=api_key, transport="rest")
 
@@ -22,12 +22,12 @@ class AIService:
         ]
 
     def process_voice_command(self, user_text: str, inventory: List[Item]):
-        print(f"\n🎤 Processing Voice: {user_text}")
+        print(f"\n[INFO] Processing voice: {user_text}")
         
         # CRITICAL: Filter inventory to only include items with price > 0
         filtered_inventory = [item for item in inventory if item.price > 0]
-        print(f"📦 Total Inventory Items: {len(inventory)}")
-        print(f"✅ Items with Price > 0: {len(filtered_inventory)}")
+        print(f"[INFO] Total inventory items: {len(inventory)}")
+        print(f"[INFO] Items with price > 0: {len(filtered_inventory)}")
         
         # Prepare Inventory with names array support
         inventory_list = []
@@ -104,21 +104,21 @@ EXAMPLES:
         last_error = ""
         for model_name in self.candidate_models:
             try:
-                print(f"🔄 Trying model: {model_name}...")
+                print(f"[INFO] Trying model: {model_name}...")
                 model = genai.GenerativeModel(model_name)
                 response = model.generate_content(prompt)
                 
-                print(f"✅ SUCCESS! Model '{model_name}' worked.")
+                print(f"[OK] Model '{model_name}' succeeded.")
                 
                 clean_text = response.text.replace("```json", "").replace("```", "").strip()
                 return json.loads(clean_text)
                 
             except Exception as e:
-                print(f"⚠️ {model_name} Failed: {e}")
+                print(f"[WARN] {model_name} failed: {e}")
                 last_error = str(e)
                 continue  # Try the next model
         
-        print(f"\n❌ ALL MODELS FAILED. Last Error: {last_error}\n")
+        print(f"\n[ERROR] All models failed. Last error: {last_error}\n")
         return {
             "type": "ERROR",
             "items": [],

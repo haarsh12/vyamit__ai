@@ -7,7 +7,7 @@ from typing import List
 # 1. Configure Gemini
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
-    print("\n❌ ERROR: GEMINI_API_KEY is missing!\n")
+    print("\n[ERROR] GEMINI_API_KEY is not set. Voice AI will return errors until it is configured.\n")
 else:
     genai.configure(api_key=api_key, transport="rest")
 
@@ -25,13 +25,13 @@ class AIService:
         self, user_text: str, inventory: List[Item], shop_category: str = "General"
     ) -> str:
         """Master prompt (inventory + rules + JSON schema) — shared with hybrid pipeline."""
-        print(f"\n🎤 Processing Voice: {user_text}")
-        print(f"🏷️ Shop category (AI context): {shop_category}")
+        print(f"\n[INFO] Processing voice: {user_text}")
+        print(f"[INFO] Shop category (AI context): {shop_category}")
         
         # CRITICAL: Filter inventory to only include items with price > 0
         filtered_inventory = [item for item in inventory if item.price > 0]
-        print(f"📦 Total Inventory Items: {len(inventory)}")
-        print(f"✅ Items with Price > 0: {len(filtered_inventory)}")
+        print(f"[INFO] Total inventory items: {len(inventory)}")
+        print(f"[INFO] Items with price > 0: {len(filtered_inventory)}")
         
         # Prepare Inventory with names array support
         inventory_list = []
@@ -48,7 +48,7 @@ class AIService:
         inventory_json = json.dumps(inventory_list, ensure_ascii=False)
         
         return f"""You are Vyamit AI, a female voice assistant for "Vyamit AI App". detect the language user is speaking and Answer ONLY in that language  but use Latin Script (Hinglish/Roman script) for giving the billing items to the app that are going to print.  use Devanagari script only for the response question or answer the the query of user .
-
+also give response to user any general queries in short 
 SHOP TYPE (mandatory context — this merchant runs a "{shop_category}" business):
 - Use this to interpret vague product names and typical units (e.g. Dairy → milk, dahi, paneer, butter; Kirana → general groceries; Hardware → tools, fasteners, building supplies; Stationary → pens, notebooks; Clothing → garments, sizes; Doctor → medicines/clinic supplies where applicable; General → mixed retail).
 - Prefer terminology and defaults that match this shop type when the user is unclear.
@@ -114,21 +114,21 @@ EXAMPLES:
         last_error = ""
         for model_name in self.candidate_models:
             try:
-                print(f"🔄 Trying model: {model_name}...")
+                print(f"[INFO] Trying model: {model_name}...")
                 model = genai.GenerativeModel(model_name)
                 response = model.generate_content(prompt)
                 
-                print(f"✅ SUCCESS! Model '{model_name}' worked.")
+                print(f"[OK] Model '{model_name}' succeeded.")
                 
                 clean_text = response.text.replace("```json", "").replace("```", "").strip()
                 return json.loads(clean_text)
                 
             except Exception as e:
-                print(f"⚠️ {model_name} Failed: {e}")
+                print(f"[WARN] {model_name} failed: {e}")
                 last_error = str(e)
                 continue  # Try the next model
         
-        print(f"\n❌ ALL MODELS FAILED. Last Error: {last_error}\n")
+        print(f"\n[ERROR] All Gemini candidate models failed. Last error: {last_error}\n")
         return {
             "type": "ERROR",
             "items": [],

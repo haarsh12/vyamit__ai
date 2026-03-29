@@ -7,10 +7,16 @@ from sqlmodel import Session, select
 import os
 
 # 1. Configuration
-# We try to get the secret from .env, otherwise use a default (unsafe) one
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-this-in-prod")
+_DEFAULT_DEV_SECRET = "super-secret-key-change-this-in-prod"
+SECRET_KEY = os.getenv("SECRET_KEY", _DEFAULT_DEV_SECRET)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 Days
+
+# Render and other hosts: never use the dev default in production.
+if os.getenv("RENDER") and (not os.getenv("SECRET_KEY") or SECRET_KEY == _DEFAULT_DEV_SECRET):
+    raise RuntimeError(
+        "SECRET_KEY must be set to a long random value in production (Render Dashboard > Environment)."
+    )
 
 # 2. Security scheme for Bearer token
 security = HTTPBearer()
@@ -69,11 +75,9 @@ def get_current_user(
         user_id: str = payload.get("sub")
         
         if user_id is None:
-            print("DEBUG: Token payload missing 'sub' field")
             raise credentials_exception
-            
-    except JWTError as e:
-        print(f"DEBUG: JWT Error: {e}")
+
+    except JWTError:
         raise credentials_exception
     
     # Return the user_id - the actual user lookup will happen in the endpoint
@@ -82,5 +86,4 @@ def get_current_user(
         def __init__(self, user_id: int):
             self.id = user_id
     
-    print(f"DEBUG: Token validated for user ID: {user_id}")
     return UserStub(int(user_id))

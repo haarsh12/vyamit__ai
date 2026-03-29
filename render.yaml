@@ -1,0 +1,13 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Set root directory to backend_app in the dashboard if deploying from monorepo without moving this file.
+services:
+  - type: web
+    name: vyamit-backend
+    runtime: python
+    rootDir: backend_app
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
