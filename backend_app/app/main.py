@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.db.database import create_db_and_tables
-from app.api import auth, items, voice, voice_inventory, sms_share, analytics
+from app.api import auth, items, voice, voice_inventory, sms_share, analytics, vector_search
 
 # CORS - allow frontend to call API (set FRONTEND_URL in Render for production)
 ALLOWED_ORIGINS = os.getenv("FRONTEND_URL", "http://localhost:3000").split(",")
@@ -41,6 +41,7 @@ app.include_router(voice.router, prefix="/voice", tags=["Voice AI"])
 app.include_router(voice_inventory.router, prefix="/inventory", tags=["Voice Inventory"])
 app.include_router(sms_share.router, prefix="/sms", tags=["SMS Sharing"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics & Dashboard"])
+app.include_router(vector_search.router, prefix="/vector", tags=["Vector Search & RAG"])
 
 @app.get("/")
 def health_check():
