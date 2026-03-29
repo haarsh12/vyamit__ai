@@ -6,6 +6,8 @@ class ShopDetails {
   String address;
   String phone1;
   String phone2;
+  /// Kirana, Dairy, Hardware, General, Stationary, Clothing, Doctor, Other
+  String shopCategory;
   Uint8List? qrCodeBytes; // Added for Printer Logic
 
   ShopDetails({
@@ -14,6 +16,7 @@ class ShopDetails {
     required this.address,
     required this.phone1,
     required this.phone2,
+    this.shopCategory = 'General',
     this.qrCodeBytes,
   });
 }

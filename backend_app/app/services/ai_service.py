@@ -21,9 +21,12 @@ class AIService:
             "gemini-2.0-flash-001"       # Alternative version
         ]
 
-    def _build_vyamit_prompt(self, user_text: str, inventory: List[Item]) -> str:
+    def _build_vyamit_prompt(
+        self, user_text: str, inventory: List[Item], shop_category: str = "General"
+    ) -> str:
         """Master prompt (inventory + rules + JSON schema) — shared with hybrid pipeline."""
         print(f"\n🎤 Processing Voice: {user_text}")
+        print(f"🏷️ Shop category (AI context): {shop_category}")
         
         # CRITICAL: Filter inventory to only include items with price > 0
         filtered_inventory = [item for item in inventory if item.price > 0]
@@ -45,6 +48,11 @@ class AIService:
         inventory_json = json.dumps(inventory_list, ensure_ascii=False)
         
         return f"""You are Vyamit AI, a female voice assistant for "Vyamit AI App". detect the language user is speaking and Answer ONLY in that language  but use Latin Script (Hinglish/Roman script) for giving the billing items to the app that are going to print.  use Devanagari script only for the response question or answer the the query of user .
+
+SHOP TYPE (mandatory context — this merchant runs a "{shop_category}" business):
+- Use this to interpret vague product names and typical units (e.g. Dairy → milk, dahi, paneer, butter; Kirana → general groceries; Hardware → tools, fasteners, building supplies; Stationary → pens, notebooks; Clothing → garments, sizes; Doctor → medicines/clinic supplies where applicable; General → mixed retail).
+- Prefer terminology and defaults that match this shop type when the user is unclear.
+- Do not refuse valid items solely because they are more typical of another shop type if the user clearly asked for them.
 
 PERSONALITY:
 - You are a helpful female AI assistant named Vyamit AI
@@ -128,6 +136,8 @@ EXAMPLES:
             "should_stop": False
         }
 
-    def process_voice_command(self, user_text: str, inventory: List[Item]):
-        prompt = self._build_vyamit_prompt(user_text, inventory)
+    def process_voice_command(
+        self, user_text: str, inventory: List[Item], shop_category: str = "General"
+    ):
+        prompt = self._build_vyamit_prompt(user_text, inventory, shop_category=shop_category)
         return self.run_gemini_only(prompt)

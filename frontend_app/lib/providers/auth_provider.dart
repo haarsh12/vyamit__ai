@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 import '../models/shop_details.dart';
+import '../core/shop_categories.dart';
 
 class AuthProvider with ChangeNotifier {
   String? _token;
@@ -22,12 +23,15 @@ class AuthProvider with ChangeNotifier {
     // Load saved shop details if available
     if (prefs.containsKey('user_data')) {
       final data = jsonDecode(prefs.getString('user_data')!);
+      final cat = data['shop_category'] as String?;
       _shopDetails = ShopDetails(
         shopName: data['shop_name'] ?? "My Kirana",
         ownerName: data['owner_name'] ?? "Owner",
         address: data['address'] ?? "India",
         phone1: data['phone_number'] ?? "",
         phone2: data['phone2'] ?? "", // Load phone2 from storage
+        shopCategory:
+            (cat != null && kShopCategories.contains(cat)) ? cat : 'General',
       );
 
       print("DEBUG: Auto-login loaded phone2: ${_shopDetails?.phone2}");
@@ -43,6 +47,7 @@ class AuthProvider with ChangeNotifier {
     String? shopName,
     String? ownerName,
     String? address,
+    String? shopCategory,
   }) async {
     try {
       // 1. Send Request
@@ -52,6 +57,7 @@ class AuthProvider with ChangeNotifier {
         if (shopName != null) "shop_name": shopName,
         if (ownerName != null) "owner_name": ownerName,
         if (address != null) "address": address,
+        if (shopCategory != null) "shop_category": shopCategory,
       });
 
       // DEBUG LOG: Check this in your Flutter Terminal!
@@ -66,8 +72,15 @@ class AuthProvider with ChangeNotifier {
       String finalAddress = response['address'] ?? address ?? "India";
       String finalPhone2 = response['phone2'] ?? ""; // Get phone2 from response
       int userId = response['user_id'] ?? 0;
+      String finalCategory = response['shop_category'] as String? ??
+          shopCategory ??
+          'General';
+      if (!kShopCategories.contains(finalCategory)) {
+        finalCategory = 'General';
+      }
 
       print("DEBUG: Received phone2 from backend: $finalPhone2");
+      print("DEBUG: shop_category: $finalCategory");
 
       // 4. Save to Storage
       final prefs = await SharedPreferences.getInstance();
@@ -80,6 +93,7 @@ class AuthProvider with ChangeNotifier {
         'address': finalAddress,
         'phone_number': phone,
         'phone2': finalPhone2, // Save phone2 to storage
+        'shop_category': finalCategory,
       };
       await prefs.setString('user_data', jsonEncode(userData));
 
@@ -90,6 +104,7 @@ class AuthProvider with ChangeNotifier {
         address: finalAddress,
         phone1: phone,
         phone2: finalPhone2, // Set phone2 in state
+        shopCategory: finalCategory,
       );
 
       notifyListeners();
@@ -115,16 +130,18 @@ class AuthProvider with ChangeNotifier {
     required String ownerName,
     required String address,
     String? phone2,
+    required String shopCategory,
   }) async {
     try {
       print(
-          "Updating profile: Shop=$shopName, Owner=$ownerName, Address=$address, Phone2=$phone2");
+          "Updating profile: Shop=$shopName, Owner=$ownerName, Address=$address, Phone2=$phone2, Category=$shopCategory");
 
       // 1. Send Update Request to Backend
       final response = await _apiClient.put('/auth/update-profile', {
         "shop_name": shopName,
         "owner_name": ownerName,
         "address": address,
+        "shop_category": shopCategory,
         if (phone2 != null && phone2.isNotEmpty) "phone2": phone2,
       });
 
@@ -136,6 +153,11 @@ class AuthProvider with ChangeNotifier {
       String updatedAddress = response['address'] ?? address;
       String updatedPhone2 =
           response['phone2'] ?? phone2 ?? ""; // Get phone2 from response
+      String updatedCategory = response['shop_category'] as String? ??
+          shopCategory;
+      if (!kShopCategories.contains(updatedCategory)) {
+        updatedCategory = 'General';
+      }
 
       // Keep phone1 unchanged (it's read-only)
       String currentPhone1 = _shopDetails?.phone1 ?? "";
@@ -160,6 +182,7 @@ class AuthProvider with ChangeNotifier {
         'address': updatedAddress,
         'phone_number': currentPhone1,
         'phone2': updatedPhone2, // Save updated phone2
+        'shop_category': updatedCategory,
       };
       await prefs.setString('user_data', jsonEncode(userData));
 
@@ -170,6 +193,7 @@ class AuthProvider with ChangeNotifier {
         address: updatedAddress,
         phone1: currentPhone1,
         phone2: updatedPhone2, // Update phone2 in state
+        shopCategory: updatedCategory,
       );
 
       notifyListeners();

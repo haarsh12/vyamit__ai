@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../core/shop_categories.dart';
 import '../models/shop_details.dart';
 import '../providers/auth_provider.dart';
 import '../providers/bill_provider.dart';
@@ -24,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _addressCtrl;
   late TextEditingController _phone1Ctrl;
   late TextEditingController _phone2Ctrl;
+  late String _selectedShopCategory;
 
   // Edit State Triggers
   final Map<String, bool> _isEditing = {
@@ -31,7 +32,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'owner': false,
     'address': false,
     'ph1': false,
-    'ph2': false
+    'ph2': false,
+    'category': false,
   };
 
   // Settings State
@@ -55,13 +57,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ownerName: "Owner",
                 address: "Address",
                 phone1: "",
-                phone2: "");
+                phone2: "",
+                shopCategory: "General");
 
     _shopNameCtrl = TextEditingController(text: details.shopName);
     _ownerNameCtrl = TextEditingController(text: details.ownerName);
     _addressCtrl = TextEditingController(text: details.address);
     _phone1Ctrl = TextEditingController(text: details.phone1);
     _phone2Ctrl = TextEditingController(text: details.phone2);
+    _selectedShopCategory = kShopCategories.contains(details.shopCategory)
+        ? details.shopCategory
+        : 'General';
     
     // Load QR code from BillProvider
     final billProvider = Provider.of<BillProvider>(context, listen: false);
@@ -100,6 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (key == 'owner') current.ownerName = _ownerNameCtrl.text;
         if (key == 'address') current.address = _addressCtrl.text;
         if (key == 'ph2') current.phone2 = _phone2Ctrl.text;
+        if (key == 'category') current.shopCategory = _selectedShopCategory;
 
         // Force UI rebuild to reflect changes in Preview
         setState(() {});
@@ -122,6 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ownerName: _ownerNameCtrl.text.trim(),
         address: _addressCtrl.text.trim(),
         phone2: _phone2Ctrl.text.trim(),
+        shopCategory: _selectedShopCategory,
       );
 
       // Show success message
@@ -141,6 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isEditing['owner'] = false;
         _isEditing['address'] = false;
         _isEditing['ph2'] = false;
+        _isEditing['category'] = false;
       });
     } catch (e) {
       // Show error message
@@ -217,7 +226,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ownerName: "Owner",
             address: "Address",
             phone1: "",
-            phone2: "");
+            phone2: "",
+            shopCategory: "General");
 
     // Preview Items Data
     final previewItems = [
@@ -328,6 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildEditableField(
                                   "Phone 2 (Optional)", _phone2Ctrl, 'ph2',
                                   isPhone: true),
+                              _buildShopCategoryRow(),
                             ]))),
                     const SizedBox(height: 30),
 
@@ -468,6 +479,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // --- WIDGET HELPERS ---
+
+  Widget _buildShopCategoryRow() {
+    final isEditing = _isEditing['category']!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Shop type (category)",
+              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedShopCategory,
+                    isExpanded: true,
+                    items: kShopCategories
+                        .map((c) =>
+                            DropdownMenuItem<String>(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: isEditing
+                        ? (v) {
+                            if (v != null) {
+                              setState(() => _selectedShopCategory = v);
+                            }
+                          }
+                        : null,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => _toggleEdit('category'),
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isEditing ? Icons.check : Icons.edit,
+                    size: 18,
+                    color: isEditing
+                        ? AppColors.primaryGreen
+                        : Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildEditableField(
       String label, TextEditingController controller, String key,

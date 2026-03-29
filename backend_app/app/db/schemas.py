@@ -14,6 +14,7 @@ class VerifyOTPRequest(BaseModel):
     shop_name: Optional[str] = None
     owner_name: Optional[str] = None
     address: Optional[str] = None
+    shop_category: Optional[str] = None  # Required when creating a new account
 
 # 3. Token Response (Updated to include phone2)
 class TokenResponse(BaseModel):
@@ -26,6 +27,7 @@ class TokenResponse(BaseModel):
     owner_name: Optional[str] = None
     address: Optional[str] = None
     phone2: Optional[str] = None  # NEW: Added phone2
+    shop_category: Optional[str] = "General"
 
 # 4. Update Profile Request
 class UpdateProfileRequest(BaseModel):
@@ -33,6 +35,7 @@ class UpdateProfileRequest(BaseModel):
     owner_name: Optional[str] = None
     address: Optional[str] = None
     phone2: Optional[str] = None
+    shop_category: Optional[str] = None
 
 # 5. Item Schemas - MODIFIED TO SUPPORT NAMES ARRAY
 class ItemBase(BaseModel):

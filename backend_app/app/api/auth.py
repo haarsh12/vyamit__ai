@@ -3,6 +3,10 @@ from sqlmodel import Session, select
 from app.db.database import get_session
 from app.db.models import User
 from app.db.schemas import OTPRequest, VerifyOTPRequest, TokenResponse, UpdateProfileRequest
+from app.core.shop_categories import (
+    normalize_shop_category,
+    validate_shop_category_required,
+)
 from app.services.otp_service import OTPService
 from app.services.sms_service import SMSService
 from app.core.security import create_access_token, get_current_user
@@ -83,16 +87,24 @@ def verify_otp(request: VerifyOTPRequest, session: Session = Depends(get_session
                 status_code=status.HTTP_400_BAD_REQUEST, 
                 detail="Shop Name and Owner Name are required for new registration"
             )
+        try:
+            category = validate_shop_category_required(request.shop_category)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
             
         is_new_user = True
-        print(f"DEBUG: Creating NEW user for {clean_phone}")
+        print(f"DEBUG: Creating NEW user for {clean_phone} category={category}")
         
         user = User(
             phone_number=clean_phone,
             shop_name=request.shop_name,
             owner_name=request.owner_name,
             address=request.address,
-            phone2=None  # Initialize as None for new users
+            phone2=None,  # Initialize as None for new users
+            shop_category=category,
         )
         session.add(user)
         session.commit()
@@ -103,7 +115,7 @@ def verify_otp(request: VerifyOTPRequest, session: Session = Depends(get_session
     # 4. Generate Token
     access_token = create_access_token(data={"sub": str(user.id)})
     
-    # 5. Return COMPLETE user profile including phone2
+    # 5. Return COMPLETE user profile including phone2 and shop_category
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -112,7 +124,8 @@ def verify_otp(request: VerifyOTPRequest, session: Session = Depends(get_session
         "shop_name": user.shop_name,
         "owner_name": user.owner_name,
         "address": user.address,
-        "phone2": user.phone2  # IMPORTANT: Include phone2 in response
+        "phone2": user.phone2,  # IMPORTANT: Include phone2 in response
+        "shop_category": getattr(user, "shop_category", None) or "General",
     }
 
 @router.put("/update-profile", response_model=TokenResponse)
@@ -154,6 +167,16 @@ def update_profile(
     if request.phone2 is not None:
         current_user.phone2 = request.phone2.strip()
         print(f"DEBUG: Updated phone2 to: {current_user.phone2}")
+
+    if request.shop_category is not None:
+        normalized = normalize_shop_category(request.shop_category)
+        if normalized is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid shop_category",
+            )
+        current_user.shop_category = normalized
+        print(f"DEBUG: Updated shop_category to: {current_user.shop_category}")
     
     # Save changes to database
     session.add(current_user)
@@ -174,5 +197,6 @@ def update_profile(
         "shop_name": current_user.shop_name,
         "owner_name": current_user.owner_name,
         "address": current_user.address,
-        "phone2": current_user.phone2  # IMPORTANT: Include phone2 in response
+        "phone2": current_user.phone2,  # IMPORTANT: Include phone2 in response
+        "shop_category": getattr(current_user, "shop_category", None) or "General",
     }

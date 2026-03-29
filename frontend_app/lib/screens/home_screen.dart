@@ -225,7 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ownerName: "",
                   address: "",
                   phone1: "",
-                  phone2: "");
+                  phone2: "",
+                  shopCategory: "General");
 
       // Get QR Code Path from BillProvider
       final billProvider = Provider.of<BillProvider>(context, listen: false);
@@ -373,7 +374,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ownerName: "",
             address: "",
             phone1: "",
-            phone2: "");
+            phone2: "",
+            shopCategory: "General");
 
     return Scaffold(
       body: PageView(

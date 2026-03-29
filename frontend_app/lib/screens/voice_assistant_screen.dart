@@ -335,7 +335,10 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen> {
       setState(() => _aiResponseText = "Processing...");
 
       // 1. Call API
-      final data = await _apiClient.post('/voice/process', {"text": text});
+      final data = await _apiClient.post('/voice/process', {
+        "text": text,
+        "shop_category": widget.shopDetails.shopCategory,
+      });
 
       // 2. Extract customer name (if provided by AI)
       String customerName = data['customer_name'] ?? "Walk-in";

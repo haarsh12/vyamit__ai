@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/theme.dart';
+import '../core/shop_categories.dart';
 import '../providers/auth_provider.dart';
 import 'otp_screen.dart';
 
@@ -17,15 +17,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isLoading = false;
+  String? _selectedShopCategory;
 
   void _checkUserAndSendOtp() async {
     String phone = _phoneController.text.trim();
     if (phone.length < 10 ||
         _shopNameController.text.isEmpty ||
         _ownerNameController.text.isEmpty ||
-        _addressController.text.isEmpty) {
+        _addressController.text.isEmpty ||
+        _selectedShopCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields correctly")),
+        const SnackBar(
+            content: Text(
+                "Please fill all fields and select your shop type (category)")),
       );
       return;
     }
@@ -50,6 +54,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               shopName: _shopNameController.text.trim(),
               ownerName: _ownerNameController.text.trim(),
               address: _addressController.text.trim(),
+              shopCategory: _selectedShopCategory!,
             ),
           ),
         );
@@ -112,6 +117,26 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 hintText: "City, State",
                 prefixIcon: Icon(Icons.location_on, color: Colors.grey),
               ),
+            ),
+            const SizedBox(height: 20),
+            const Text("Shop type",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text(
+              "Required — helps billing AI understand your business",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedShopCategory,
+              decoration: const InputDecoration(
+                hintText: "Select category",
+                prefixIcon: Icon(Icons.category_outlined, color: Colors.grey),
+              ),
+              items: kShopCategories
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedShopCategory = v),
             ),
             const SizedBox(height: 20),
             const Text("Mobile Number",

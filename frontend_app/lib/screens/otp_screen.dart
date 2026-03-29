@@ -13,6 +13,7 @@ class OtpScreen extends StatefulWidget {
   final String? shopName;
   final String? ownerName;
   final String? address;
+  final String? shopCategory;
 
   const OtpScreen({
     super.key,
@@ -21,6 +22,7 @@ class OtpScreen extends StatefulWidget {
     this.shopName,
     this.ownerName,
     this.address,
+    this.shopCategory,
   });
 
   @override
@@ -103,7 +105,8 @@ class _OtpScreenState extends State<OtpScreen> {
           otp: otp,
           shopName: widget.shopName,
           ownerName: widget.ownerName,
-          address: widget.address);
+          address: widget.address,
+          shopCategory: widget.shopCategory);
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(

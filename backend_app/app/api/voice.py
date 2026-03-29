@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 from app.db.database import get_session
-from app.db.models import Item
+from app.db.models import Item, User
 from app.services.ai_service import AIService
 from app.api.items import get_current_user # Re-use the login logic
 
@@ -21,6 +21,8 @@ else:
 
 class VoiceRequest(BaseModel):
     text: str
+    # Optional client echo for debugging; AI prompt uses DB value on server.
+    shop_category: Optional[str] = None
 
 class PremiumVoiceRequest(BaseModel):
     transcript: str
@@ -39,12 +41,29 @@ def process_voice(
     # 1. Get THIS user's inventory
     statement = select(Item).where(Item.owner_id == user_id)
     inventory = session.exec(statement).all()
+
+    db_user = session.get(User, user_id)
+    shop_category = (
+        (getattr(db_user, "shop_category", None) or "General")
+        if db_user
+        else "General"
+    )
+    if request.shop_category and request.shop_category.strip() != shop_category:
+        print(
+            f"⚠️ shop_category hint from client ({request.shop_category!r}) "
+            f"≠ DB ({shop_category!r}) — using DB for AI"
+        )
+    print(f"🏷️ /voice/process user_id={user_id} shop_category={shop_category} (DB)")
     
     # 2. Call hybrid (Qwen→Gemini→Gemma + memory) or legacy Gemini-only
     if hybrid_voice is not None:
-        ai_response = hybrid_voice.process_voice_command(request.text, inventory, user_id)
+        ai_response = hybrid_voice.process_voice_command(
+            request.text, inventory, user_id, shop_category=shop_category
+        )
     else:
-        ai_response = ai_service.process_voice_command(request.text, inventory)
+        ai_response = ai_service.process_voice_command(
+            request.text, inventory, shop_category=shop_category
+        )
     
     return ai_response
 
@@ -118,7 +137,10 @@ def process_query(request: PremiumVoiceRequest):
         }
 
 @router.post("/process-billing")
-def process_billing(request: PremiumVoiceRequest):
+def process_billing(
+    request: PremiumVoiceRequest,
+    session: Session = Depends(get_session),
+):
     """
     Process billing transcript
     Returns bill updates
@@ -137,14 +159,22 @@ def process_billing(request: PremiumVoiceRequest):
             })()
             inventory_items.append(item)
         
+        db_user = session.get(User, request.user_id)
+        shop_category = (
+            (getattr(db_user, "shop_category", None) or "General")
+            if db_user
+            else "General"
+        )
         # Process with AI (same hybrid flag as /voice/process)
         if hybrid_voice is not None:
             uid = int(request.user_id)
             ai_response = hybrid_voice.process_voice_command(
-                request.transcript, inventory_items, uid
+                request.transcript, inventory_items, uid, shop_category=shop_category
             )
         else:
-            ai_response = ai_service.process_voice_command(request.transcript, inventory_items)
+            ai_response = ai_service.process_voice_command(
+                request.transcript, inventory_items, shop_category=shop_category
+            )
         
         # Extract bill items
         bill_updates = []

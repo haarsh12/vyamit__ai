@@ -15,6 +15,8 @@ class User(TimestampModel, table=True):
     owner_name: Optional[str] = None
     address: Optional[str] = None
     phone2: Optional[str] = None  # Secondary phone number (EDITABLE)
+    # Kirana, Dairy, Hardware, General, Stationary, Clothing, Doctor, Other
+    shop_category: str = Field(default="General", index=True)
     is_active: bool = Field(default=True)
     role: str = Field(default="owner")
 

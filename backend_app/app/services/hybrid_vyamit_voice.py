@@ -139,14 +139,21 @@ class HybridVyamitVoiceService:
             return None
 
     def process_voice_command(
-        self, user_text: str, inventory: List[Item], user_id: int
+        self,
+        user_text: str,
+        inventory: List[Item],
+        user_id: int,
+        shop_category: str = "General",
     ) -> Dict[str, Any]:
         memory = self._memory_for(user_id)
-        base_prompt = self._ai._build_vyamit_prompt(user_text, inventory)
+        base_prompt = self._ai._build_vyamit_prompt(
+            user_text, inventory, shop_category=shop_category
+        )
         full_prompt = self._compose_full_prompt(base_prompt, memory)
 
         _banner("VYAMIT HYBRID LLM — PIPELINE START")
         print(f"  user_id: {user_id}")
+        print(f"  shop_category: {shop_category}")
         print(f"  raw_user_text: {user_text!r}")
         print(f"  inventory_rows: {len(inventory)}")
         print(f"  memory_turns: {len(memory.chat_memory.messages) // 2}")
