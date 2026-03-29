@@ -1,59 +1,65 @@
-# FastAPI and ASGI server
+# =========================
+# CORE BACKEND
+# =========================
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+python-multipart==0.0.6
 
-# Database
+# =========================
+# DATABASE
+# =========================
 sqlmodel==0.0.14
 sqlalchemy==2.0.23
 alembic==1.12.1
+psycopg2-binary==2.9.9
 
-# Authentication & Security
+# =========================
+# AUTH & SECURITY
+# =========================
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
 
-# Environment variables
+# =========================
+# ENV & UTILITIES
+# =========================
 python-dotenv==1.0.0
+python-dateutil==2.8.2
+orjson==3.9.10
 
-# HTTP requests
+# =========================
+# HTTP CLIENTS
+# =========================
 httpx==0.25.2
 requests==2.31.0
 
-# Data validation
+# =========================
+# DATA VALIDATION
+# =========================
 pydantic==2.5.0
 pydantic-settings==2.1.0
 
-# CORS (FastAPI has built-in CORS middleware)
-# No additional package needed for CORS
-
-# Date and time
-python-dateutil==2.8.2
-
-# JSON handling
-orjson==3.9.10
-
-# Testing (optional)
-pytest==7.4.3
-pytest-asyncio==0.21.1
-
-# Development tools (optional)
-black==23.11.0
-flake8==6.1.0
-
-# AI & ML
+# =========================
+# AI / LLM
+# =========================
 google-generativeai==0.8.6
-# google-generativeai pins protobuf <6; protobuf 6+ breaks older clients (MessageToJson kwarg)
 protobuf>=4.25,<6
-# Hybrid pipeline: LangChain + Hugging Face (updated for production compatibility)
-langchain>=0.1.0
-langchain-core>=0.1.0
-langchain-community>=0.0.10
-langchain-huggingface>=0.0.1
-huggingface_hub>=0.23.0
 
-# Vector Embeddings & RAG
+# =========================
+# LANGCHAIN (PINNED - FIXES DEPLOYMENT)
+# =========================
+langchain==0.1.20
+langchain-core==0.1.52
+langchain-community==0.0.38
+langchain-huggingface==0.0.3
+huggingface_hub==0.23.0
+
+# =========================
+# EMBEDDINGS / VECTOR
+# =========================
 sentence-transformers==2.2.2
-scikit-learn==1.3.2
 numpy==1.24.3
-psycopg2-binary==2.9.9
+
+# =========================
+# SUPABASE
+# =========================
 supabase==2.3.4
