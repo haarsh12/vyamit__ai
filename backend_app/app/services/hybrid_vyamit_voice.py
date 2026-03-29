@@ -13,7 +13,27 @@ import time
 from threading import Lock
 from typing import Any, Dict, List, Optional
 
-from langchain.memory import ConversationBufferMemory
+# Simple memory implementation to replace ConversationBufferMemory
+class SimpleConversationMemory:
+    def __init__(self):
+        self.messages = []
+    
+    def add_user_message(self, message: str):
+        self.messages.append({"role": "user", "content": message})
+    
+    def add_ai_message(self, message: str):
+        self.messages.append({"role": "assistant", "content": message})
+    
+    def get_conversation_history(self) -> str:
+        history = []
+        for msg in self.messages[-10:]:  # Keep last 10 messages
+            role = "Human" if msg["role"] == "user" else "Assistant"
+            history.append(f"{role}: {msg['content']}")
+        return "\n".join(history)
+    
+    def clear(self):
+        self.messages = []
+
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_huggingface import HuggingFaceEndpoint
 
@@ -60,24 +80,19 @@ class HybridVyamitVoiceService:
 
     def __init__(self) -> None:
         self._ai = AIService()
-        self._memories: Dict[int, ConversationBufferMemory] = {}
+        self._memories: Dict[int, SimpleConversationMemory] = {}
         self._lock = Lock()
         self._qwen_llm: Optional[HuggingFaceEndpoint] = None
         self._gemma_llm: Optional[HuggingFaceEndpoint] = None
 
-    def _memory_for(self, user_id: int) -> ConversationBufferMemory:
+    def _memory_for(self, user_id: int) -> SimpleConversationMemory:
         with self._lock:
             if user_id not in self._memories:
-                self._memories[user_id] = ConversationBufferMemory(
-                    return_messages=True,
-                    memory_key="chat_history",
-                    input_key="input",
-                    output_key="output",
-                )
+                self._memories[user_id] = SimpleConversationMemory()
             return self._memories[user_id]
 
-    def _format_history(self, memory: ConversationBufferMemory, max_turns: int = 6) -> str:
-        msgs = memory.chat_memory.messages[-(max_turns * 2) :]
+    def _format_history(self, memory: SimpleConversationMemory, max_turns: int = 6) -> str:
+        return memory.get_conversation_history()
         if not msgs:
             return ""
         lines: List[str] = []
@@ -156,7 +171,7 @@ class HybridVyamitVoiceService:
         print(f"  shop_category: {shop_category}")
         print(f"  raw_user_text: {user_text!r}")
         print(f"  inventory_rows: {len(inventory)}")
-        print(f"  memory_turns: {len(memory.chat_memory.messages) // 2}")
+        print(f"  memory_turns: {len(memory.messages) // 2}")
         print(f"  order: QWEN ({HUGGINGFACE_QWEN_MODEL}) → GEMINI → GEMMA ({HUGGINGFACE_GEMMA_MODEL})")
 
         token = _hf_token()
@@ -175,10 +190,8 @@ class HybridVyamitVoiceService:
                 parsed = _parse_bill_json(raw) if raw else None
                 if parsed is not None:
                     print("\n✅ HYBRID: Qwen produced valid Vyamit JSON.")
-                    memory.save_context(
-                        {"input": user_text},
-                        {"output": json.dumps(parsed, ensure_ascii=False)[:2000]},
-                    )
+                    memory.add_user_message(user_text)
+                    memory.add_ai_message(json.dumps(parsed, ensure_ascii=False)[:2000])
                     _banner("VYAMIT HYBRID LLM — PIPELINE END (winner: QWEN)")
                     return parsed
                 last_error = "Qwen: no valid JSON with 'type' field"
@@ -195,10 +208,8 @@ class HybridVyamitVoiceService:
         )
         if not gemini_system_outage:
             print(f"\n✅ HYBRID: Gemini completed in {dt:.2f}s → type={gemini_out.get('type')}")
-            memory.save_context(
-                {"input": user_text},
-                {"output": json.dumps(gemini_out, ensure_ascii=False)[:2000]},
-            )
+            memory.add_user_message(user_text)
+            memory.add_ai_message(json.dumps(gemini_out, ensure_ascii=False)[:2000])
             _banner("VYAMIT HYBRID LLM — PIPELINE END (winner: GEMINI)")
             return gemini_out
         last_error = f"Gemini all candidate models failed: {gemini_out.get('msg', '')}"
@@ -215,10 +226,8 @@ class HybridVyamitVoiceService:
                 parsed_g = _parse_bill_json(raw_g) if raw_g else None
                 if parsed_g is not None:
                     print("\n✅ HYBRID: Gemma produced valid Vyamit JSON.")
-                    memory.save_context(
-                        {"input": user_text},
-                        {"output": json.dumps(parsed_g, ensure_ascii=False)[:2000]},
-                    )
+                    memory.add_user_message(user_text)
+                    memory.add_ai_message(json.dumps(parsed_g, ensure_ascii=False)[:2000])
                     _banner("VYAMIT HYBRID LLM — PIPELINE END (winner: GEMMA)")
                     return parsed_g
 
