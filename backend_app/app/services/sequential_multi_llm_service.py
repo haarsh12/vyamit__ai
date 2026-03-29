@@ -25,9 +25,11 @@ import asyncio
 import time
 
 # LangChain imports
-from langchain_huggingface import HuggingFaceEndpoint
+# Removed langchain_huggingface for Render deployment
+# from langchain_huggingface import HuggingFaceEndpoint
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.memory import ConversationBufferMemory
+# Removed ConversationBufferMemory for Render deployment (too heavy)
+# from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
 # Environment
@@ -106,28 +108,57 @@ class SequentialMultiLLMService:
         hf_token = os.getenv("HUGGINGFACE_API_TOKEN")
         gemini_key = os.getenv("GEMINI_API_KEY")
         
-        if not hf_token:
-            raise ValueError("HUGGINGFACE_API_TOKEN not found in environment")
+        # Check environment variables
         if not gemini_key:
             raise ValueError("GEMINI_API_KEY not found in environment")
         
+        # For Render deployment, only use Gemini to avoid memory issues
+        is_render = os.getenv("RENDER") or os.getenv("PORT")
+        
         try:
-            # 1. Qwen (Primary - Fast)
-            print("   [..] Initializing Qwen/Qwen2.5-7B-Instruct...")
-            self.qwen = HuggingFaceEndpoint(
-                repo_id="Qwen/Qwen2.5-7B-Instruct",
-                max_new_tokens=512,
-                temperature=0.3,
-                top_p=0.9,
-                do_sample=True,
-                huggingfacehub_api_token=hf_token,
-                model_kwargs={
-                    "max_length": 2048
-                }
-            )
-            print("   [OK] Qwen initialized successfully")
+            if is_render:
+                print("   [INFO] Render deployment detected - using only Gemini")
+                self.qwen = None
+                self.gemma = None
+            else:
+                # 1. Qwen (Primary - Fast) - Only for local development
+                if hf_token:
+                    print("   [..] Initializing Qwen/Qwen2.5-7B-Instruct...")
+                    self.qwen = HuggingFaceEndpoint(
+                        repo_id="Qwen/Qwen2.5-7B-Instruct",
+                        max_new_tokens=512,
+                        temperature=0.3,
+                        top_p=0.9,
+                        do_sample=True,
+                        huggingfacehub_api_token=hf_token,
+                        model_kwargs={
+                            "max_length": 2048
+                        }
+                    )
+                    print("   [OK] Qwen initialized successfully")
+                else:
+                    self.qwen = None
+                    print("   [WARN] No HuggingFace token - Qwen disabled")
+                
+                # 3. Gemma (Final Fallback) - Only for local development
+                if hf_token:
+                    print("   [..] Initializing Google/Gemma-2B...")
+                    self.gemma = HuggingFaceEndpoint(
+                        repo_id="google/gemma-2b",
+                        max_new_tokens=512,
+                        temperature=0.3,
+                        do_sample=True,
+                        huggingfacehub_api_token=hf_token,
+                        model_kwargs={
+                            "max_length": 1024
+                        }
+                    )
+                    print("   [OK] Gemma initialized successfully")
+                else:
+                    self.gemma = None
+                    print("   [WARN] No HuggingFace token - Gemma disabled")
             
-            # 2. Gemini (Smart Fallback)
+            # 2. Gemini (Always available)
             print("   [..] Initializing Gemini-2.5-Flash...")
             self.gemini = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash",
@@ -136,17 +167,6 @@ class SequentialMultiLLMService:
                 max_output_tokens=512
             )
             print("   [OK] Gemini initialized successfully")
-            
-            # 3. Gemma (Final Fallback)
-            print("   [..] Initializing Google/Gemma-2B...")
-            self.gemma = HuggingFaceEndpoint(
-                repo_id="google/gemma-2b",
-                max_new_tokens=512,
-                temperature=0.3,
-                do_sample=True,
-                huggingfacehub_api_token=hf_token,
-                model_kwargs={
-                    "max_length": 1024
                 }
             )
             print("   [OK] Gemma initialized successfully")
@@ -165,15 +185,11 @@ class SequentialMultiLLMService:
             raise
     
     def initialize_memory(self):
-        """Initialize conversation memory system"""
-        print("\n[INFO] Initializing memory system...")
-        self.memory = ConversationBufferMemory(
-            return_messages=True,
-            memory_key="chat_history",
-            input_key="input",
-            output_key="output"
-        )
-        print("   [OK] Conversation buffer memory initialized")
+        """Initialize conversation memory system - Simplified for Render"""
+        print("\n[INFO] Initializing simplified memory system...")
+        # Use simple list instead of ConversationBufferMemory for Render
+        self.memory = []
+        print("   [OK] Simplified memory initialized")
     
     def get_master_prompt(self, user_input: str, include_history: bool = True) -> str:
         """
@@ -183,13 +199,14 @@ class SequentialMultiLLMService:
         
         # Get conversation history if requested
         history_context = ""
-        if include_history and self.memory.chat_memory.messages:
+        if include_history and self.memory:
             history_context = "\n\nCONVERSATION HISTORY:\n"
-            for msg in self.memory.chat_memory.messages[-6:]:  # Last 3 exchanges
-                if isinstance(msg, HumanMessage):
-                    history_context += f"User: {msg.content}\n"
-                elif isinstance(msg, AIMessage):
-                    history_context += f"Assistant: {msg.content}\n"
+            # Show last 6 messages (3 exchanges)
+            for msg in self.memory[-6:]:
+                if msg.get("role") == "user":
+                    history_context += f"User: {msg['content']}\n"
+                elif msg.get("role") == "assistant":
+                    history_context += f"Assistant: {msg['content']}\n"
         
         master_prompt = f"""You are VYAMIT AI - a multilingual intelligent assistant for grocery and market systems.
 
@@ -301,6 +318,11 @@ RESPONSE:"""
             print(f"\n[TRYING MODEL]: {model_name}")
             print(f"[TIME] Execution started at: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
             
+            # Skip if model is None (disabled for Render)
+            if model is None:
+                print(f"[SKIP] {model_name} is disabled for Render deployment")
+                continue
+            
             start_time = time.time()
             
             try:
@@ -357,13 +379,16 @@ RESPONSE:"""
         )
     
     def save_to_memory(self, user_input: str, response: str):
-        """Save conversation to memory"""
-        self.memory.save_context(
-            {"input": user_input},
-            {"output": response}
-        )
+        """Save conversation to memory - Simplified for Render"""
+        self.memory.append({"role": "user", "content": user_input})
+        self.memory.append({"role": "assistant", "content": response})
+        
+        # Keep only last 20 messages (10 exchanges) to prevent memory bloat
+        if len(self.memory) > 20:
+            self.memory = self.memory[-20:]
+            
         print(f"\n[INFO] Memory updated:")
-        print(f"   Total conversations: {len(self.memory.chat_memory.messages) // 2}")
+        print(f"   Total conversations: {len(self.memory) // 2}")
     
     def create_structured_log(self, user_input: str, preprocessed_input: str, 
                             model_response: ModelResponse, total_time: float) -> ProcessingLog:
@@ -371,11 +396,9 @@ RESPONSE:"""
         
         # Get current memory context
         memory_context = []
-        for msg in self.memory.chat_memory.messages[-4:]:  # Last 2 exchanges
-            if isinstance(msg, HumanMessage):
-                memory_context.append({"role": "user", "content": msg.content})
-            elif isinstance(msg, AIMessage):
-                memory_context.append({"role": "assistant", "content": msg.content})
+        # Show last 4 messages (2 exchanges)
+        for msg in self.memory[-4:]:
+            memory_context.append({"role": msg["role"], "content": msg["content"]})
         
         log_entry = ProcessingLog(
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
@@ -501,7 +524,7 @@ RESPONSE:"""
                 "execution_time": total_execution_time,
                 "confidence_score": model_response.confidence_score,
                 "timestamp": log_entry.timestamp,
-                "conversation_length": len(self.memory.chat_memory.messages) // 2
+                "conversation_length": len(self.memory) // 2
             }
             
         except Exception as e:
@@ -520,16 +543,12 @@ RESPONSE:"""
     def get_conversation_history(self) -> List[Dict[str, str]]:
         """Get formatted conversation history"""
         history = []
-        messages = self.memory.chat_memory.messages
         
-        for i in range(0, len(messages), 2):
-            if i + 1 < len(messages):
-                user_msg = messages[i]
-                ai_msg = messages[i + 1]
-                
+        for i in range(0, len(self.memory), 2):
+            if i + 1 < len(self.memory):
                 history.append({
-                    "user": user_msg.content if isinstance(user_msg, HumanMessage) else str(user_msg),
-                    "assistant": ai_msg.content if isinstance(ai_msg, AIMessage) else str(ai_msg),
+                    "user": self.memory[i]["content"],
+                    "assistant": self.memory[i + 1]["content"],
                     "timestamp": datetime.now().isoformat()  # Simplified for demo
                 })
         
@@ -540,7 +559,7 @@ RESPONSE:"""
         return {
             **self.performance_stats,
             "total_logs": len(self.processing_logs),
-            "memory_conversations": len(self.memory.chat_memory.messages) // 2
+            "memory_conversations": len(self.memory) // 2
         }
     
     def clear_memory(self):

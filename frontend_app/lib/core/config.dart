@@ -11,10 +11,10 @@ class ApiConfig {
   static const String _localUrl = "http://localhost:8000";
 
   static String get baseUrl {
-    // 🧪 DEVELOPMENT MODE - Using local backend for testing
-    if (kReleaseMode) {
-      return _productionUrl;  // Use production in release mode
-    }
+    // 🧪 DEVELOPMENT MODE - Force local backend until Render is fixed
+    // if (kReleaseMode) {
+    //   return _productionUrl;  // Use production in release mode
+    // }
 
     if (Platform.isAndroid) {
       return _realDeviceUrl;  // Real phone connected via USB
@@ -23,7 +23,7 @@ class ApiConfig {
 
     return _localUrl;  // Web/Windows
 
-    // ✅ PRODUCTION MODE - Uncomment this line to use production
+    // ✅ PRODUCTION MODE - Uncomment this line when Render deployment is working
     // return _productionUrl;
   }
 }

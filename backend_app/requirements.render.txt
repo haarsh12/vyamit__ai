@@ -33,7 +33,12 @@ protobuf>=4.25,<6
 # Basic numpy for data handling
 numpy==1.24.3
 
+# Minimal LangChain (only for Gemini integration)
+langchain-core>=0.1.0
+langchain-google-genai>=0.1.0
+
 # Skip heavy ML dependencies on Render:
 # - sentence-transformers (causes OOM)
 # - torch/transformers (too heavy)
-# - langchain (not essential for basic functionality)
+# - langchain-huggingface (removed)
+# - full langchain package (too heavy)

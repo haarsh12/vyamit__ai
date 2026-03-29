@@ -35,7 +35,8 @@ class SimpleConversationMemory:
         self.messages = []
 
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_huggingface import HuggingFaceEndpoint
+# Removed langchain_huggingface dependency for Render deployment
+# from langchain_huggingface import HuggingFaceEndpoint
 
 from app.db.models import Item
 from app.services.ai_service import AIService
@@ -82,8 +83,9 @@ class HybridVyamitVoiceService:
         self._ai = AIService()
         self._memories: Dict[int, SimpleConversationMemory] = {}
         self._lock = Lock()
-        self._qwen_llm: Optional[HuggingFaceEndpoint] = None
-        self._gemma_llm: Optional[HuggingFaceEndpoint] = None
+        # Removed HuggingFace endpoints for Render deployment - using only Gemini
+        # self._qwen_llm: Optional[HuggingFaceEndpoint] = None
+        # self._gemma_llm: Optional[HuggingFaceEndpoint] = None
 
     def _memory_for(self, user_id: int) -> SimpleConversationMemory:
         with self._lock:
@@ -114,28 +116,17 @@ class HybridVyamitVoiceService:
             f"{hist}\n\n---\n\n{base_prompt}"
         )
 
-    def _ensure_hf_llm(self, repo_id: str, label: str) -> Optional[HuggingFaceEndpoint]:
-        token = _hf_token()
-        if not token:
-            print("[WARN] Hybrid: No HUGGINGFACE_API_TOKEN / HF_TOKEN — skipping HF models.")
-            return None
-        try:
-            return HuggingFaceEndpoint(
-                repo_id=repo_id,
-                huggingfacehub_api_token=token,
-                task="text-generation",
-                max_new_tokens=768,
-                temperature=0.2,
-                top_p=0.9,
-                do_sample=True,
-            )
-        except Exception as e:
-            print(f"[WARN] Hybrid: Failed to build HuggingFaceEndpoint for {label} ({repo_id}): {e}")
-            return None
+    def _ensure_hf_llm(self, repo_id: str, label: str) -> Optional[str]:
+        """Disabled HuggingFace for Render deployment - returns None"""
+        print(f"[INFO] HuggingFace {label} disabled for Render deployment")
+        return None
 
     def _invoke_hf(
-        self, llm: HuggingFaceEndpoint, label: str, repo_id: str, prompt: str
+        self, llm: str, label: str, repo_id: str, prompt: str
     ) -> Optional[str]:
+        """Disabled HuggingFace for Render deployment - returns None"""
+        print(f"[INFO] HuggingFace {label} invoke disabled for Render deployment")
+        return None
         t0 = time.perf_counter()
         print(f"\n  >> [{label}] repo={repo_id}")
         print(f"  >> Prompt length: {len(prompt)} chars")
