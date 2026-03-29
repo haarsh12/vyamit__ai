@@ -21,7 +21,8 @@ class AIService:
             "gemini-2.0-flash-001"       # Alternative version
         ]
 
-    def process_voice_command(self, user_text: str, inventory: List[Item]):
+    def _build_vyamit_prompt(self, user_text: str, inventory: List[Item]) -> str:
+        """Master prompt (inventory + rules + JSON schema) — shared with hybrid pipeline."""
         print(f"\n🎤 Processing Voice: {user_text}")
         
         # CRITICAL: Filter inventory to only include items with price > 0
@@ -43,7 +44,7 @@ class AIService:
         
         inventory_json = json.dumps(inventory_list, ensure_ascii=False)
         
-        prompt = f"""You are Vyamit AI, a female voice assistant for "Vyamit AI App". detect the language user is speaking and Answer ONLY in that language  but use Latin Script (Hinglish/Roman script) for giving the billing items to the app that are going to print.  use Devanagari script only for the response question or answer the the query of user .
+        return f"""You are Vyamit AI, a female voice assistant for "Vyamit AI App". detect the language user is speaking and Answer ONLY in that language  but use Latin Script (Hinglish/Roman script) for giving the billing items to the app that are going to print.  use Devanagari script only for the response question or answer the the query of user .
 
 PERSONALITY:
 - You are a helpful female AI assistant named Vyamit AI
@@ -100,7 +101,8 @@ EXAMPLES:
 - User: "hello" → {{"type": "GREETING", "customer_name": "Walk-in", "items": [], "msg": "Namaste! Main Vyamit AI hoon. Kaise madad kar sakti hoon?"}}
 - User: "aam" (not in inventory, no price) → {{"type": "ERROR", "customer_name": "Walk-in", "items": [], "msg": "Aam ki keemat kya hai?"}}"""
 
-        # AUTO-DISCOVERY LOOP
+    def run_gemini_only(self, prompt: str):
+        """Run the existing Gemini candidate-model loop only (used by hybrid + default path)."""
         last_error = ""
         for model_name in self.candidate_models:
             try:
@@ -125,3 +127,7 @@ EXAMPLES:
             "msg": "सिस्टम त्रुटि: कृपया बाद में पुनः प्रयास करें।", 
             "should_stop": False
         }
+
+    def process_voice_command(self, user_text: str, inventory: List[Item]):
+        prompt = self._build_vyamit_prompt(user_text, inventory)
+        return self.run_gemini_only(prompt)

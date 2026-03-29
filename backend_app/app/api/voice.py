@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -9,6 +10,14 @@ from app.api.items import get_current_user # Re-use the login logic
 
 router = APIRouter()
 ai_service = AIService()
+
+# Qwen → Gemini → Gemma hybrid (LangChain memory + logs). Set VYAMIT_HYBRID_LLM=false for Gemini-only.
+_HYBRID = os.getenv("VYAMIT_HYBRID_LLM", "true").lower() in ("1", "true", "yes")
+if _HYBRID:
+    from app.services.hybrid_vyamit_voice import HybridVyamitVoiceService
+    hybrid_voice = HybridVyamitVoiceService()
+else:
+    hybrid_voice = None
 
 class VoiceRequest(BaseModel):
     text: str
@@ -31,8 +40,11 @@ def process_voice(
     statement = select(Item).where(Item.owner_id == user_id)
     inventory = session.exec(statement).all()
     
-    # 2. Call the AI Service
-    ai_response = ai_service.process_voice_command(request.text, inventory)
+    # 2. Call hybrid (Qwen→Gemini→Gemma + memory) or legacy Gemini-only
+    if hybrid_voice is not None:
+        ai_response = hybrid_voice.process_voice_command(request.text, inventory, user_id)
+    else:
+        ai_response = ai_service.process_voice_command(request.text, inventory)
     
     return ai_response
 
@@ -125,8 +137,14 @@ def process_billing(request: PremiumVoiceRequest):
             })()
             inventory_items.append(item)
         
-        # Process with AI
-        ai_response = ai_service.process_voice_command(request.transcript, inventory_items)
+        # Process with AI (same hybrid flag as /voice/process)
+        if hybrid_voice is not None:
+            uid = int(request.user_id)
+            ai_response = hybrid_voice.process_voice_command(
+                request.transcript, inventory_items, uid
+            )
+        else:
+            ai_response = ai_service.process_voice_command(request.transcript, inventory_items)
         
         # Extract bill items
         bill_updates = []
