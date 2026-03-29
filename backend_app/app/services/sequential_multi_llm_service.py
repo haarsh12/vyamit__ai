@@ -12,7 +12,7 @@ Features:
 - Detailed structured logging to terminal
 - Unified master prompt for all models
 - Response validation and retry logic
-- Performance metrics and debugging
+- Performance metrics and  debugging
 """
 
 import json
