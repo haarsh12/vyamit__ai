@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../core/role_home.dart';
 import '../providers/auth_provider.dart';
-import 'home_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
@@ -109,8 +109,13 @@ class _OtpScreenState extends State<OtpScreen> {
           shopCategory: widget.shopCategory);
 
       if (mounted) {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(
+            builder: (context) => buildHomeForShopCategory(
+              auth.shopDetails?.shopCategory,
+            ),
+          ),
           (route) => false,
         );
       }

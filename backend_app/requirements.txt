@@ -20,8 +20,8 @@ httpx==0.25.2
 requests==2.31.0
 
 # Data validation
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic>=2.7.4
+pydantic-settings>=2.1.0
 
 # CORS (FastAPI has built-in CORS middleware)
 # No additional package needed for CORS

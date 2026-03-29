@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../core/role_home.dart';
 import '../providers/auth_provider.dart';
 import '../providers/bill_provider.dart';
-import 'home_screen.dart';
 import 'auth_selection_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -53,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen>
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => isLoggedIn
-                ? const HomeScreen() // REMOVE 'const' if this still errors
+                ? buildHomeForShopCategory(auth.shopDetails?.shopCategory)
                 : const AuthSelectionScreen(),
           ),
         );

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../core/role_home.dart';
 import '../core/theme.dart';
 import '../core/shop_categories.dart';
 import '../models/shop_details.dart';
 import '../providers/auth_provider.dart';
 import '../providers/bill_provider.dart';
+import '../providers/doctor_prefs_provider.dart';
 import '../widgets/bill_receipt_widget.dart';
 import 'auth_selection_screen.dart';
+import 'doctor/create_prescription_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   // We remove the passed variable to rely on Provider for the source of truth
@@ -24,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _addressCtrl;
   late TextEditingController _phone1Ctrl;
   late TextEditingController _phone2Ctrl;
+  late TextEditingController _doctorSpecCtrl;
   late String _selectedShopCategory;
 
   // Edit State Triggers
@@ -65,10 +69,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _addressCtrl = TextEditingController(text: details.address);
     _phone1Ctrl = TextEditingController(text: details.phone1);
     _phone2Ctrl = TextEditingController(text: details.phone2);
+    _doctorSpecCtrl = TextEditingController();
     _selectedShopCategory = kShopCategories.contains(details.shopCategory)
         ? details.shopCategory
         : 'General';
-    
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final docPrefs =
+          Provider.of<DoctorPrefsProvider>(context, listen: false);
+      await docPrefs.load();
+      if (mounted) {
+        _doctorSpecCtrl.text = docPrefs.specialization;
+      }
+    });
+
     // Load QR code from BillProvider
     final billProvider = Provider.of<BillProvider>(context, listen: false);
     _uploadedQrPath = billProvider.qrCodePath;
@@ -122,6 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final provider = Provider.of<AuthProvider>(context, listen: false);
+      final categoryBefore = provider.shopDetails?.shopCategory;
 
       // Call the update profile API
       await provider.updateProfile(
@@ -131,6 +146,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         phone2: _phone2Ctrl.text.trim(),
         shopCategory: _selectedShopCategory,
       );
+
+      if (mounted) {
+        final docPrefs =
+            Provider.of<DoctorPrefsProvider>(context, listen: false);
+        if (_selectedShopCategory == 'Doctor') {
+          await docPrefs.setSpecialization(_doctorSpecCtrl.text);
+        } else {
+          await docPrefs.setSpecialization('');
+        }
+      }
 
       // Show success message
       if (mounted) {
@@ -151,6 +176,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isEditing['ph2'] = false;
         _isEditing['category'] = false;
       });
+
+      // Switch retail vs Doctor shell when category crosses Doctor boundary
+      if (mounted) {
+        final categoryAfter = provider.shopDetails?.shopCategory;
+        final crossedDoctor = categoryBefore != categoryAfter &&
+            (categoryBefore == 'Doctor' || categoryAfter == 'Doctor');
+        if (crossedDoctor) {
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => buildHomeForShopCategory(categoryAfter),
+            ),
+            (_) => false,
+          );
+        }
+      }
     } catch (e) {
       // Show error message
       if (mounted) {
@@ -215,6 +255,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text("Logout",
                           style: TextStyle(color: Colors.white))),
                 ]));
+  }
+
+  @override
+  void dispose() {
+    _shopNameCtrl.dispose();
+    _ownerNameCtrl.dispose();
+    _addressCtrl.dispose();
+    _phone1Ctrl.dispose();
+    _phone2Ctrl.dispose();
+    _doctorSpecCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -339,6 +390,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   "Phone 2 (Optional)", _phone2Ctrl, 'ph2',
                                   isPhone: true),
                               _buildShopCategoryRow(),
+                              if (_selectedShopCategory == 'Doctor') ...[
+                                const SizedBox(height: 4),
+                                _buildDoctorSpecializationField(),
+                              ],
                             ]))),
                     const SizedBox(height: 30),
 
@@ -471,6 +526,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.tablet_android_rounded, "Shop Tablet", false),
                       ]),
                     ),
+                    const SizedBox(height: 30),
+
+                    // 6. MOCK ENTRY TO DOCTOR MODE
+                    const Text("Developer Testing",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.medical_services, color: AppColors.primaryGreen),
+                        title: const Text("Launch Doctor Mode (Mock)"),
+                        subtitle: const Text("Simulates clicking a doctor from a previous screen"),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CreatePrescriptionScreen(
+                                doctorName: 'Dr. John Example',
+                                specialization: 'Cardiologist',
+                                clinicName: 'City Heart Center',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 50),
                   ])),
         ]),
@@ -479,6 +561,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // --- WIDGET HELPERS ---
+
+  Widget _buildDoctorSpecializationField() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Specialization (shown on prescriptions)',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _doctorSpecCtrl,
+            decoration: const InputDecoration(
+              hintText: 'e.g. General Medicine, Pediatrics',
+              isDense: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildShopCategoryRow() {
     final isEditing = _isEditing['category']!;
@@ -503,9 +608,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             DropdownMenuItem<String>(value: c, child: Text(c)))
                         .toList(),
                     onChanged: isEditing
-                        ? (v) {
-                            if (v != null) {
-                              setState(() => _selectedShopCategory = v);
+                        ? (v) async {
+                            if (v == null) return;
+                            setState(() => _selectedShopCategory = v);
+                            if (v == 'Doctor') {
+                              final docPrefs = Provider.of<DoctorPrefsProvider>(
+                                  context,
+                                  listen: false);
+                              await docPrefs.load();
+                              if (mounted) {
+                                _doctorSpecCtrl.text = docPrefs.specialization;
+                              }
                             }
                           }
                         : null,
