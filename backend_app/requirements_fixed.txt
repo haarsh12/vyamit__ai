@@ -23,9 +23,6 @@ requests==2.31.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
 
-# CORS (FastAPI has built-in CORS middleware)
-# No additional package needed for CORS
-
 # Date and time
 python-dateutil==2.8.2
 
@@ -40,7 +37,16 @@ pytest-asyncio==0.21.1
 black==23.11.0
 flake8==6.1.0
 
-# AI & ML
+# LangChain and AI Models - Compatible versions
+langchain==0.1.0
+langchain-huggingface==0.0.3
+langchain-google-genai==1.0.1
+langchain-community==0.0.13
+faiss-cpu==1.7.4
+
+# Google AI
 google-generativeai==0.8.6
-# google-generativeai pins protobuf <6; protobuf 6+ breaks older clients (MessageToJson kwarg)
-protobuf>=4.25,<6
+protobuf==4.25.9
+
+# Memory and Vector Storage
+chromadb==0.4.22
