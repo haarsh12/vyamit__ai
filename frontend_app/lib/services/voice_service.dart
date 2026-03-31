@@ -11,6 +11,8 @@ class VoiceService extends ChangeNotifier {
   bool _isListening = false;
   bool get isListening => _isListening;
   
+  bool _keepListeningLoop = false;
+  
   // Accumulated transcript (full session)
   String _fullTranscript = '';
   String get fullTranscript => _fullTranscript;
@@ -78,6 +80,9 @@ class VoiceService extends ChangeNotifier {
       await _startSpeechRecognition();
       _startAudioAnimation();
       
+      _keepListeningLoop = true;
+      _startListeningLoop();
+      
       debugPrint('🎙️ Listening started');
     } catch (e) {
       debugPrint('❌ Start failed: $e');
@@ -97,6 +102,21 @@ class VoiceService extends ChangeNotifier {
       listenFor: const Duration(minutes: 10), // Very long session
       pauseFor: const Duration(seconds: 30), // Allow long pauses
     );
+  }
+  
+  void _startListeningLoop() async {
+    while (_keepListeningLoop) {
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (_isListening && !_speech.isListening) {
+        try {
+          await _startSpeechRecognition();
+          debugPrint("🔄 Forced restart listening");
+        } catch (e) {
+          debugPrint("❌ Loop restart error: $e");
+        }
+      }
+    }
   }
   
   /// Restart listening quietly (for continuous session)
@@ -119,6 +139,7 @@ class VoiceService extends ChangeNotifier {
     if (!_isListening) return '';
     
     try {
+      _keepListeningLoop = false;
       await _speech.stop();
       
       _audioDecayTimer?.cancel();
